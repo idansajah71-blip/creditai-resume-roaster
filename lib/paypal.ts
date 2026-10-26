@@ -1,0 +1,127 @@
+export type CaptureResult = {
+  status: string;
+  captureId: string | null;
+  amount: string | null;
+  currency: string | null;
+  captureStatus: string | null;
+};
+
+function base() {
+  return process.env.PAYPAL_ENV === "live"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
+}
+
+function authHeader() {
+  const id = process.env.PAYPAL_CLIENT_ID!;
+  const secret = process.env.PAYPAL_CLIENT_SECRET!;
+  return "Basic " + Buffer.from(`${id}:${secret}`).toString("base64");
+}
+
+export async function getAccessToken(): Promise<string> {
+  const res = await fetch(`${base()}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader(),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!res.ok) throw new Error("paypal_token_failed");
+  const data = (await res.json()) as { access_token: string };
+  return data.access_token;
+}
+
+export async function createPayPalOrder(
+  amount: string,
+  currency: string,
+  requestId: string,
+  returnUrl?: string,
+  cancelUrl?: string,
+): Promise<{ id: string; approvalUrl: string }> {
+  const token = await getAccessToken();
+  const res = await fetch(`${base()}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "PayPal-Request-Id": requestId,
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [{ amount: { currency_code: currency, value: amount } }],
+      application_context: returnUrl
+        ? { return_url: returnUrl, cancel_url: cancelUrl || returnUrl }
+        : undefined,
+    }),
+  });
+  if (!res.ok) throw new Error("paypal_create_failed");
+  const data = (await res.json()) as {
+    id: string;
+    links?: { rel: string; href: string }[];
+  };
+  const approve = data.links?.find((l) => l.rel === "approve")?.href;
+  const approvalUrl = approve || `${sandboxApproveBase()}/checkoutnow?token=${data.id}`;
+  return { id: data.id, approvalUrl };
+}
+
+function sandboxApproveBase() {
+  return process.env.PAYPAL_ENV === "live"
+    ? "https://www.paypal.com"
+    : "https://www.sandbox.paypal.com";
+}
+
+export async function capturePayPalOrder(orderId: string): Promise<CaptureResult> {
+  const token = await getAccessToken();
+  const res = await fetch(`${base()}/v2/checkout/orders/${orderId}/capture`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) throw new Error("paypal_capture_failed");
+  const data = (await res.json()) as {
+    status: string;
+    purchase_units?: {
+      amount?: { value: string; currency_code: string };
+      payments?: { captures?: { id: string; status: string; amount: { value: string; currency_code: string } }[] };
+    }[];
+  };
+  const pu = data.purchase_units?.[0];
+  const capture = pu?.payments?.captures?.[0];
+  return {
+    status: data.status,
+    captureId: capture?.id ?? null,
+    amount: capture?.amount?.value ?? pu?.amount?.value ?? null,
+    currency: capture?.amount?.currency_code ?? pu?.amount?.currency_code ?? null,
+    captureStatus: capture?.status ?? null,
+  };
+}
+
+export async function verifyWebhookSignature(
+  headers: Record<string, string>,
+  event: unknown,
+): Promise<boolean> {
+  const token = await getAccessToken();
+  const payload = {
+    auth_algo: headers["paypal-auth-algo"],
+    cert_url: headers["paypal-cert-url"],
+    transmission_id: headers["paypal-transmission-id"],
+    transmission_sig: headers["paypal-transmission-sig"],
+    transmission_time: headers["paypal-transmission-time"],
+    webhook_id: process.env.PAYPAL_WEBHOOK_ID,
+    webhook_event: event,
+  };
+  const res = await fetch(`${base()}/v1/notifications/verify-webhook-signature`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { verification_status: string };
+  return data.verification_status === "SUCCESS";
+}

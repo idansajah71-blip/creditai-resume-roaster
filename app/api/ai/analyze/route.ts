@@ -1,0 +1,143 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { reserveCredit, consumeReservation, refundReservation } from "@/lib/credits";
+import { analyzeResume } from "@/lib/openai";
+import { analysisResultSchema } from "@/lib/ai-schema";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+const bodySchema = z.object({
+  resumeText: z.string().min(1).max(20000),
+  jobDescription: z.string().min(1).max(10000),
+  idempotencyKey: z.string().min(8).max(128).optional(),
+});
+
+export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ success: false, message: "unauthorized" }, { status: 401 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ success: false, message: "invalid json" }, { status: 400 });
+  }
+  const parsed = bodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ success: false, message: "invalid input" }, { status: 400 });
+  }
+  const { resumeText, jobDescription } = parsed.data;
+
+  if (!checkRateLimit(user.id, 5, 60000)) {
+    return NextResponse.json({ success: false, message: "rate limited" }, { status: 429 });
+  }
+
+  const service = createServiceClient();
+  const idempotencyKey = parsed.data.idempotencyKey || crypto.randomUUID();
+
+  // idempotency: existing job
+  const { data: existing } = await service
+    .from("ai_jobs")
+    .select("*")
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === "succeeded") {
+      let result = null;
+      try {
+        result = JSON.parse(existing.result);
+      } catch {
+        result = null;
+      }
+      return NextResponse.json({
+        success: true,
+        data: { jobId: existing.id, status: "succeeded", result },
+      });
+    }
+    if (existing.status === "failed") {
+      return NextResponse.json(
+        { success: false, message: existing.error || "analysis failed", data: { jobId: existing.id, status: "failed" } },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json(
+      { success: true, data: { jobId: existing.id, status: existing.status } },
+      { status: 202 },
+    );
+  }
+
+  // reserve credit
+  let reservationId: string;
+  try {
+    const r = await reserveCredit(user.id, 1, idempotencyKey);
+    reservationId = r.reservationId;
+  } catch {
+    return NextResponse.json({ success: false, message: "insufficient credits" }, { status: 402 });
+  }
+
+  // create job
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const { data: job, error: jobErr } = await service
+    .from("ai_jobs")
+    .insert({
+      user_id: user.id,
+      status: "running",
+      input: JSON.stringify({ resumeText, jobDescription }),
+      model,
+      credits_cost: 1,
+      reservation_id: reservationId,
+      idempotency_key: idempotencyKey,
+    })
+    .select("id")
+    .single();
+
+  if (jobErr || !job) {
+    await refundReservation(reservationId);
+    return NextResponse.json({ success: false, message: "db error" }, { status: 500 });
+  }
+
+  // call AI
+  let raw: string;
+  try {
+    raw = await analyzeResume(resumeText, jobDescription);
+  } catch {
+    await service.from("ai_jobs").update({ status: "failed", error: "ai_request_failed" }).eq("id", job.id);
+    await refundReservation(reservationId);
+    return NextResponse.json({ success: false, message: "ai request failed" }, { status: 502 });
+  }
+
+  // validate output
+  let result;
+  try {
+    result = analysisResultSchema.parse(JSON.parse(raw));
+  } catch {
+    await service.from("ai_jobs").update({ status: "failed", error: "invalid_output" }).eq("id", job.id);
+    await refundReservation(reservationId);
+    return NextResponse.json({ success: false, message: "invalid ai output" }, { status: 502 });
+  }
+
+  // persist result
+  await service
+    .from("ai_jobs")
+    .update({ status: "succeeded", result: JSON.stringify(result), completed_at: new Date().toISOString() })
+    .eq("id", job.id);
+
+  // finalize reservation
+  try {
+    await consumeReservation(reservationId);
+  } catch {
+    // leave as-is; reservation remains held but job succeeded
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: { jobId: job.id, status: "succeeded", result },
+  });
+}
