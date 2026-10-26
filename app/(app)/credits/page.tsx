@@ -2,6 +2,10 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
 
 type Package = { id: string; credits: number; amount: string };
 
@@ -18,10 +22,11 @@ function CreditsInner() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const capturedRef = useRef(false);
 
   async function refreshBalance() {
-    const supabase = (await import("@/lib/supabase/client")).createClient();
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from("profiles").select("credit_balance").eq("id", user.id).single();
@@ -48,7 +53,8 @@ function CreditsInner() {
         .then(async (res) => {
           const json = await res.json();
           if (!res.ok) throw new Error(json.message || "capture failed");
-          setStatus(`Success! +${json.data.creditsGranted} credits added. New balance: ${json.data.balance}`);
+          setStatus(`Success. +${json.data.creditsGranted} credits added.`);
+          setToast(`+${json.data.creditsGranted} credits added`);
           refreshBalance();
           router.refresh();
           setTimeout(() => router.push("/analyze"), 1500);
@@ -82,36 +88,37 @@ function CreditsInner() {
 
   return (
     <div className="space-y-6">
-      <div className="inline-block rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
-        Sandbox mode — no real money
+      <div className="rounded-[10px] border border-warning/30 bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
+        PayPal Sandbox mode. No real money is used.
       </div>
-      <h1 className="text-2xl font-bold">Buy Credits</h1>
-      <p className="text-gray-600">Current balance: {balance ?? "..."}</p>
-      {status && <p className="text-green-600">{status}</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      {loading && <p>Loading...</p>}
+      <h1 className="text-[32px] font-semibold leading-[38px] text-ink md:text-[40px] md:leading-[44px]">
+        Buy credits
+      </h1>
+      <p className="text-ink-muted">
+        Current balance: <span className="font-mono text-ink">{balance ?? "..."}</span>
+      </p>
+      {status && <p className="text-sm font-medium text-success">{status}</p>}
+      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
+      {loading && <p className="text-sm text-ink-muted">Processing...</p>}
       <div className="grid gap-4 md:grid-cols-3">
         {PACKAGES.map((p) => (
-          <div key={p.id} className="rounded border bg-white p-4">
-            <h3 className="font-semibold">{p.credits} credits</h3>
-            <p className="text-gray-600">${p.amount} USD</p>
-            <button
-              onClick={() => buy(p.id)}
-              disabled={loading}
-              className="mt-3 rounded bg-black px-3 py-2 text-white disabled:opacity-50"
-            >
+          <Card key={p.id}>
+            <div className="text-2xl font-bold text-ink">{p.credits} credits</div>
+            <div className="text-ink-muted">${p.amount} USD</div>
+            <Button onClick={() => buy(p.id)} disabled={loading} className="mt-4 w-full">
               Buy
-            </button>
-          </div>
+            </Button>
+          </Card>
         ))}
       </div>
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
 
 export default function CreditsPage() {
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense fallback={<p className="text-ink-muted">Loading...</p>}>
       <CreditsInner />
     </Suspense>
   );

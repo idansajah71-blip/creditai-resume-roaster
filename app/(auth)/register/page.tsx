@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import PublicShell from "@/components/PublicShell";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,47 +37,53 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="mb-4 text-2xl font-bold">Register</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Display name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-        <input
-          type="password"
-          required
-          minLength={6}
-          placeholder="Password (min 6)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          disabled={loading}
-          className="w-full rounded bg-black px-3 py-2 text-white disabled:opacity-50"
-        >
-          {loading ? "Loading..." : "Register"}
-        </button>
-      </form>
-      <p className="mt-4 text-sm">
-        Sudah punya akun?{" "}
-        <Link href="/login" className="underline">
-          Login
-        </Link>
-      </p>
-    </main>
+    <PublicShell>
+      <div className="mx-auto max-w-[420px]">
+        <div className="card p-8">
+          <h1 className="text-[28px] font-semibold leading-[34px] text-ink">Create account</h1>
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="name">Display name</Label>
+              <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" loading={loading} className="w-full">
+              Register
+            </Button>
+          </form>
+          <p className="mt-4 text-sm text-ink-muted">
+            Already have an account?{" "}
+            <Link href="/login" className="text-accent hover:underline">
+              Log in
+            </Link>
+          </p>
+        </div>
+      </div>
+    </PublicShell>
   );
 }
