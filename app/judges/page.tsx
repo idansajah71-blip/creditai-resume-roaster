@@ -1,53 +1,60 @@
+"use client";
+
+import { useState } from "react";
+
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@creditai.local";
+const demoPass = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "DemoPass123!";
+const buyerEmail = process.env.NEXT_PUBLIC_PAYPAL_BUYER_EMAIL || "sb-buyer@example.com";
+const buyerPass = process.env.NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD || "placeholder";
+
+function CopyBox({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <div className="rounded border bg-white p-3">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="flex items-center justify-between gap-2">
+        <code className="text-sm">{value}</code>
+        <button onClick={copy} className="rounded border px-2 py-1 text-xs">
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function JudgesPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
+      <div className="rounded border bg-amber-100 p-3 text-sm font-semibold text-amber-900">
+        Sandbox mode — no real money is used.
+      </div>
       <h1 className="text-3xl font-bold">Judge Quick-Start</h1>
 
-      <section className="rounded border bg-amber-50 p-4">
-        <h2 className="font-semibold">Sandbox mode</h2>
-        <p className="text-sm">
-          This app uses PayPal Sandbox only. No real money is charged. Use the provided Sandbox buyer
-          account (see below) to complete a test purchase.
-        </p>
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Demo app account</h2>
+        <p className="text-sm">Starts with 5 free credits.</p>
+        <CopyBox label="Email" value={demoEmail} />
+        <CopyBox label="Password" value={demoPass} />
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Demo account</h2>
-        <p className="text-sm">
-          Create via seed script: <code>npm run seed:demo</code> (requires service role key). Default
-          credentials are printed by the script. The account receives 5 auditable demo credits.
-        </p>
+        <h2 className="text-xl font-semibold">PayPal Sandbox buyer</h2>
+        <CopyBox label="Email" value={buyerEmail} />
+        <CopyBox label="Password" value={buyerPass} />
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Quick test flow</h2>
+        <h2 className="text-xl font-semibold">Try it in 2 minutes</h2>
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          <li>Register or login with the demo account.</li>
-          <li>Open Analyze, click &quot;Use sample&quot;, run analysis (costs 1 credit).</li>
-          <li>Verify score, strengths, weaknesses, recommendations, rewritten resume.</li>
-          <li>Use Copy and Download controls.</li>
-          <li>Open Credits, buy a package, approve in PayPal Sandbox, capture.</li>
-          <li>Check balance and Transactions page for the ledger entry.</li>
-          <li>Open History for past analyses.</li>
+          <li>Log in with the demo account.</li>
+          <li>Click &quot;Use sample&quot; and run the analysis.</li>
+          <li>Buy 10 credits with the sandbox buyer and watch the balance update.</li>
         </ol>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Security notes</h2>
-        <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>PayPal and OpenAI secrets are server-only.</li>
-          <li>Credit mutations use atomic DB functions with row locks.</li>
-          <li>RLS ensures users only see their own records.</li>
-          <li>Webhook signature is verified before processing.</li>
-        </ul>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Error scenarios covered</h2>
-        <p className="text-sm">
-          Insufficient credits returns 402. AI failure or malformed output refunds the reservation.
-          Duplicate capture/webhook delivery is idempotent.
-        </p>
       </section>
     </main>
   );

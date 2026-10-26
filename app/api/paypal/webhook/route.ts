@@ -5,7 +5,7 @@ import { grantCredits } from "@/lib/credits";
 
 export async function POST(request: Request) {
   const raw = await request.text();
-  type WebhookEvent = {
+  let event: {
     id?: string;
     event_type?: string;
     resource?: {
@@ -14,7 +14,6 @@ export async function POST(request: Request) {
       supplementary_data?: { related_ids?: { order_id?: string } };
     };
   };
-  let event: WebhookEvent;
   try {
     event = JSON.parse(raw);
   } catch {
@@ -25,7 +24,6 @@ export async function POST(request: Request) {
   request.headers.forEach((v, k) => {
     headers[k.toLowerCase()] = v;
   });
-  // normalize keys expected by verify function
   const verifyHeaders: Record<string, string> = {
     "paypal-auth-algo": headers["paypal-auth-algo"] || "",
     "paypal-cert-url": headers["paypal-cert-url"] || "",
@@ -45,15 +43,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false }, { status: 400 });
   }
 
-  const { error: insertErr } = await service.from("paypal_webhook_events").insert({
-    event_id: eventId,
-    event_type: event.event_type,
-    payload: event,
-  });
+  // Dedup: if already processed, skip.
+  const { data: existing } = await service
+    .from("paypal_webhook_events")
+    .select("processed")
+    .eq("event_id", eventId)
+    .maybeSingle();
 
-  if (insertErr) {
-    // duplicate delivery
+  if (existing?.processed) {
     return NextResponse.json({ success: true }, { status: 200 });
+  }
+
+  if (!existing) {
+    const { error: insertErr } = await service.from("paypal_webhook_events").insert({
+      event_id: eventId,
+      event_type: event.event_type,
+      payload: event,
+    });
+    if (insertErr) {
+      // Race: re-check.
+      const { data: again } = await service
+        .from("paypal_webhook_events")
+        .select("processed")
+        .eq("event_id", eventId)
+        .maybeSingle();
+      if (again?.processed) {
+        return NextResponse.json({ success: true }, { status: 200 });
+      }
+    }
   }
 
   if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
@@ -85,8 +102,9 @@ export async function POST(request: Request) {
               "paypal_webhook",
               captureId || eventId,
             );
-          } catch {
-            // ignore grant errors; event still recorded
+          } catch (e) {
+            console.error("webhook grant failed", eventId, e instanceof Error ? e.message : e);
+            return NextResponse.json({ success: false }, { status: 500 });
           }
           await service
             .from("paypal_orders")

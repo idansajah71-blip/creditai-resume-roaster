@@ -63,6 +63,26 @@ function LoginForm() {
           Register
         </Link>
       </p>
+      <button
+        type="button"
+        onClick={async () => {
+          setLoading(true);
+          const supabase = createClient();
+          const email = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@creditai.local";
+          const password = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "DemoPass123!";
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          setLoading(false);
+          if (!error) {
+            router.push("/dashboard");
+            router.refresh();
+          } else {
+            setError(error.message);
+          }
+        }}
+        className="mt-4 w-full rounded border px-3 py-2 text-sm"
+      >
+        Log in as demo judge
+      </button>
     </main>
   );
 }

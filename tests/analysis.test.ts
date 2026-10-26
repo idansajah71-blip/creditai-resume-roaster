@@ -2,15 +2,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const validResult = {
   matchScore: 80,
+  roast: "Nice resume, could be sharper.",
   strengths: ["a", "b", "c"],
   weaknesses: ["1", "2", "3", "4", "5"],
+  requirementMatches: [{ requirement: "Node.js", status: "met", evidence: "3 years" }],
+  missingKeywords: ["AWS", "CI/CD"],
   recommendations: [{ section: "Experience", advice: "add metrics" }],
   rewrittenResume: "Jane Doe ...",
 };
 
 const { mockService } = vi.hoisted(() => {
   const from = vi.fn();
-  return { mockService: { from } };
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+  return { mockService: { from, rpc } };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -30,11 +34,16 @@ vi.mock("@/lib/credits", () => ({
 const analyzeResume = vi.fn();
 vi.mock("@/lib/openai", () => ({ analyzeResume }));
 
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: () => true }));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimitDb: async () => true }));
 
 function makeService() {
   mockService.from.mockImplementation(() => ({
-    select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+    select: () => ({
+      eq: () => ({
+        maybeSingle: async () => ({ data: null, error: null }),
+        gte: async () => ({ count: 0, error: null }),
+      }),
+    }),
     insert: () => ({ select: () => ({ single: async () => ({ data: { id: "job1" }, error: null }) }) }),
     update: () => ({ eq: async () => ({ error: null }) }),
   }));

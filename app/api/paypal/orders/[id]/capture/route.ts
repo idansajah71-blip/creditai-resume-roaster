@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { capturePayPalOrder } from "@/lib/paypal";
+import { capturePayPalOrder, getPayPalOrder } from "@/lib/paypal";
 import { grantCredits } from "@/lib/credits";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -49,8 +49,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     capture = await capturePayPalOrder(id);
   } catch {
-    await service.from("paypal_orders").update({ status: "failed" }).eq("paypal_order_id", id);
-    return NextResponse.json({ success: false, message: "paypal capture failed" }, { status: 502 });
+    // Possibly already captured (by webhook or prior request). Fetch order details.
+    try {
+      capture = await getPayPalOrder(id);
+    } catch {
+      await service.from("paypal_orders").update({ status: "failed" }).eq("paypal_order_id", id);
+      return NextResponse.json({ success: false, message: "paypal capture failed" }, { status: 502 });
+    }
+    if (!capture || capture.status !== "COMPLETED") {
+      await service.from("paypal_orders").update({ status: "failed" }).eq("paypal_order_id", id);
+      return NextResponse.json({ success: false, message: "paypal capture failed" }, { status: 502 });
+    }
   }
 
   if (capture.status !== "COMPLETED" || capture.captureStatus !== "COMPLETED") {

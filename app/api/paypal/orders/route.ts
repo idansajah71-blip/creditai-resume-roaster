@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { createPayPalOrder } from "@/lib/paypal";
+import { createPayPalOrder, getApprovalUrl } from "@/lib/paypal";
 import { getPackage } from "@/lib/packages";
 import { createOrderSchema } from "@/lib/validators";
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       success: true,
       data: {
         paypalOrderId: existing.paypal_order_id,
-        approvalUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${existing.paypal_order_id}`,
+        approvalUrl: getApprovalUrl(existing.paypal_order_id),
       },
     });
   }

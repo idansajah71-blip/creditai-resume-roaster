@@ -65,10 +65,46 @@ export async function createPayPalOrder(
   return { id: data.id, approvalUrl };
 }
 
+export function getApprovalUrl(orderId: string): string {
+  const base = process.env.PAYPAL_ENV === "live" ? "https://www.paypal.com" : "https://www.sandbox.paypal.com";
+  return `${base}/checkoutnow?token=${orderId}`;
+}
+
 function sandboxApproveBase() {
   return process.env.PAYPAL_ENV === "live"
     ? "https://www.paypal.com"
     : "https://www.sandbox.paypal.com";
+}
+
+export async function getPayPalOrder(orderId: string): Promise<{
+  status: string;
+  captureId: string | null;
+  amount: string | null;
+  currency: string | null;
+  captureStatus: string | null;
+}> {
+  const token = await getAccessToken();
+  const res = await fetch(`${base()}/v2/checkout/orders/${orderId}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("paypal_get_failed");
+  const data = (await res.json()) as {
+    status: string;
+    purchase_units?: {
+      amount?: { value: string; currency_code: string };
+      payments?: { captures?: { id: string; status: string; amount: { value: string; currency_code: string } }[] };
+    }[];
+  };
+  const pu = data.purchase_units?.[0];
+  const capture = pu?.payments?.captures?.[0];
+  return {
+    status: data.status,
+    captureId: capture?.id ?? null,
+    amount: capture?.amount?.value ?? pu?.amount?.value ?? null,
+    currency: capture?.amount?.currency_code ?? pu?.amount?.currency_code ?? null,
+    captureStatus: capture?.status ?? null,
+  };
 }
 
 export async function capturePayPalOrder(orderId: string): Promise<CaptureResult> {

@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Package = { id: string; credits: number; amount: string };
 
@@ -12,11 +12,13 @@ const PACKAGES: Package[] = [
 ];
 
 function CreditsInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const [balance, setBalance] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const capturedRef = useRef(false);
 
   async function refreshBalance() {
     const supabase = (await import("@/lib/supabase/client")).createClient();
@@ -39,20 +41,25 @@ function CreditsInner() {
       setStatus("Payment cancelled.");
       return;
     }
-    if (token) {
-      // capture
+    if (token && !capturedRef.current) {
+      capturedRef.current = true;
       setLoading(true);
       fetch(`/api/paypal/orders/${token}/capture`, { method: "POST" })
         .then(async (res) => {
           const json = await res.json();
           if (!res.ok) throw new Error(json.message || "capture failed");
-          setStatus(`Captured: +${json.data.creditsGranted} credits. New balance: ${json.data.balance}`);
+          setStatus(`Success! +${json.data.creditsGranted} credits added. New balance: ${json.data.balance}`);
           refreshBalance();
+          router.refresh();
+          setTimeout(() => router.push("/analyze"), 1500);
         })
-        .catch((e) => setError(String(e.message || e)))
+        .catch((e) => {
+          setError(String(e instanceof Error ? e.message : e));
+          router.replace("/credits");
+        })
         .finally(() => setLoading(false));
     }
-  }, [params]);
+  }, [params, router]);
 
   async function buy(packageId: string) {
     setLoading(true);

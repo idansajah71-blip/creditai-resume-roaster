@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { reserveCredit, consumeReservation, refundReservation } from "@/lib/credits";
 import { analyzeResume } from "@/lib/openai";
 import { analysisResultSchema } from "@/lib/ai-schema";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimitDb } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   resumeText: z.string().min(1).max(20000),
@@ -34,11 +34,22 @@ export async function POST(request: Request) {
   }
   const { resumeText, jobDescription } = parsed.data;
 
-  if (!checkRateLimit(user.id, 5, 60000)) {
+  const service = createServiceClient();
+
+  if (!(await checkRateLimitDb(service, user.id, 5, 60))) {
     return NextResponse.json({ success: false, message: "rate limited" }, { status: 429 });
   }
 
-  const service = createServiceClient();
+  // Opportunistic cleanup of stale reservations for this user.
+  try {
+    await service.rpc("release_stale_reservations", {
+      p_user_id: user.id,
+      p_older_than: "5 minutes",
+    });
+  } catch {
+    // ignore cleanup errors
+  }
+
   const idempotencyKey = parsed.data.idempotencyKey || crypto.randomUUID();
 
   // idempotency: existing job
@@ -132,8 +143,8 @@ export async function POST(request: Request) {
   // finalize reservation
   try {
     await consumeReservation(reservationId);
-  } catch {
-    // leave as-is; reservation remains held but job succeeded
+  } catch (e) {
+    console.error("consumeReservation failed", job.id, e instanceof Error ? e.message : e);
   }
 
   return NextResponse.json({
