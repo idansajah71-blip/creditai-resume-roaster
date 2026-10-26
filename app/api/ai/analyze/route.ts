@@ -5,6 +5,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { reserveCredit, consumeReservation, refundReservation } from "@/lib/credits";
 import { analyzeResume } from "@/lib/openai";
 import { analysisResultSchema } from "@/lib/ai-schema";
+export const maxDuration = 60;
+
 import { checkRateLimitDb } from "@/lib/rate-limit";
 
 const bodySchema = z.object({

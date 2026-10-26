@@ -127,9 +127,11 @@ export default function Home() {
               <Link href="/judges" className="hover:text-ink">
                 Judge guide
               </Link>
-              <a href="#" className="hover:text-ink">
-                GitHub
-              </a>
+              {process.env.NEXT_PUBLIC_REPO_URL && (
+                <a href={process.env.NEXT_PUBLIC_REPO_URL} className="hover:text-ink" target="_blank" rel="noreferrer">
+                  GitHub
+                </a>
+              )}
             </div>
           </div>
         </footer>
