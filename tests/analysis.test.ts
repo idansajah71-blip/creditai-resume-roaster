@@ -11,10 +11,14 @@ const validResult = {
   rewrittenResume: "Jane Doe ...",
 };
 
-const { mockService } = vi.hoisted(() => {
+const { mockService, updatePayloads, insertPayloads } = vi.hoisted(() => {
   const from = vi.fn();
   const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
-  return { mockService: { from, rpc } };
+  return {
+    mockService: { from, rpc },
+    updatePayloads: [] as Record<string, unknown>[],
+    insertPayloads: [] as Record<string, unknown>[],
+  };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -46,14 +50,22 @@ function makeService() {
       }),
       gte: async () => ({ count: 0, error: null }),
     }),
-    insert: () => ({ select: () => ({ single: async () => ({ data: { id: "job1" }, error: null }) }) }),
-    update: () => ({ eq: async () => ({ error: null }) }),
+    insert: (payload: Record<string, unknown>) => {
+      insertPayloads.push(payload);
+      return { select: () => ({ single: async () => ({ data: { id: "job1" }, error: null }) }) };
+    },
+    update: (payload: Record<string, unknown>) => {
+      updatePayloads.push(payload);
+      return { eq: async () => ({ error: null }) };
+    },
   }));
 }
 
 describe("analyze route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    updatePayloads.length = 0;
+    insertPayloads.length = 0;
     makeService();
   });
 
@@ -194,5 +206,73 @@ describe("analyze route", () => {
     const [r1, r2] = await Promise.all([POST(req1), POST(req2)]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(402);
+  });
+
+  it("redacts stored input by default on success (privacy)", async () => {
+    reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
+    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    scoreResume.mockResolvedValue(90);
+    const { POST } = await import("@/app/api/ai/analyze/route");
+    const req = new Request("http://localhost/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: "secret resume text", jobDescription: "secret job text" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    // The insert still carries raw text (mid-run), but the finalize update
+    // must replace input with a length-only summary.
+    const succeeded = updatePayloads.find((p) => p.status === "succeeded");
+    expect(succeeded).toBeTruthy();
+    expect(succeeded!.input).toBe(
+      JSON.stringify({ resumeChars: "secret resume text".length, jobChars: "secret job text".length }),
+    );
+    expect(JSON.stringify(succeeded!)).not.toContain("secret resume text");
+    expect(consumeReservation).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps raw input when retainInput:true", async () => {
+    reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
+    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    scoreResume.mockResolvedValue(90);
+    const { POST } = await import("@/app/api/ai/analyze/route");
+    const req = new Request("http://localhost/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        resumeText: "secret resume text",
+        jobDescription: "secret job text",
+        retainInput: true,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    // Raw text exists at insert time and is never swapped out on finalize.
+    expect(insertPayloads[0].input).toBe(
+      JSON.stringify({ resumeText: "secret resume text", jobDescription: "secret job text" }),
+    );
+    const succeeded = updatePayloads.find((p) => p.status === "succeeded");
+    expect(succeeded).toBeTruthy();
+    expect("input" in succeeded!).toBe(false);
+  });
+
+  it("redacts stored input on the AI failure path", async () => {
+    reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
+    analyzeResume.mockRejectedValue(new Error("boom"));
+    const { POST } = await import("@/app/api/ai/analyze/route");
+    const req = new Request("http://localhost/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: "secret resume text", jobDescription: "secret job text" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(502);
+    expect(refundReservation).toHaveBeenCalledWith("res1");
+    const failed = updatePayloads.find((p) => p.status === "failed");
+    expect(failed).toBeTruthy();
+    expect(failed!.input).toBe(
+      JSON.stringify({ resumeChars: "secret resume text".length, jobChars: "secret job text".length }),
+    );
+    expect(JSON.stringify(failed!)).not.toContain("secret resume text");
   });
 });

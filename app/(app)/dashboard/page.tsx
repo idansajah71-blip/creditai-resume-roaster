@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
+import DeleteDataSection from "@/components/DeleteDataSection";
 import Link from "next/link";
 
 export default async function DashboardPage() {
@@ -58,6 +59,8 @@ export default async function DashboardPage() {
           New analysis
         </Link>
       </Card>
+
+      <DeleteDataSection />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-ink">Recent analyses</h2>

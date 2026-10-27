@@ -7,7 +7,26 @@
 4. Deploy.
 
 ## Database
-- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql` in Supabase SQL editor (in order).
+- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql` in Supabase SQL editor (in order).
+
+## Privacy retention
+- Migration `0007_purge_inputs.sql` makes `ai_jobs.input` nullable and adds `purge_old_job_inputs(p_older_than interval default interval '30 days')`
+  (SECURITY DEFINER, runs as the database owner; it nulls inputs older than the window and returns the row count).
+- Schedule the daily purge with Supabase pg_cron (Database > Extensions > enable `pg_cron`, then):
+  ```sql
+  select cron.schedule(
+    'purge-job-inputs',
+    '45 2 * * *',
+    $$select public.purge_old_job_inputs(interval '30 days');$$
+  );
+  ```
+- Retention default in the app: resume text is NOT stored unless the user checks
+  "Save my resume text for history" on /analyze. When unchecked, `ai_jobs.input`
+  holds only character counts (`{"resumeChars": n, "jobChars": n}`) once the job
+  finishes (success or failure).
+- Users can delete their own analysis history (`ai_jobs`) at any time via the
+  "Delete my analysis data" button on the dashboard. Credit ledger and payment
+  records are intentionally kept for financial integrity.
 
 ## Cost protection (OpenAI)
 - In the OpenAI dashboard, set a hard monthly spend limit on your project. This caps real cost even if env limits are misconfigured.

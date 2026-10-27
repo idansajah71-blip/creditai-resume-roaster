@@ -13,6 +13,7 @@ Placeholder: https://your-deployment.vercel.app
 - Atomic credit reservation/finalization/refund.
 - PayPal Sandbox payments with webhook verification.
 - Idempotent orders, captures, grants, webhook events.
+- Privacy by default: resume text is not stored unless you opt in (checkbox on /analyze); character-count-only history otherwise; user-triggered one-click deletion of analysis data on the dashboard; public /privacy notice.
 - User-specific analysis and transaction history.
 - PDF upload for resumes.
 
@@ -33,7 +34,7 @@ flowchart LR
 ## Setup
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill values.
-3. Run migrations `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql` (in order).
+3. Run migrations `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql` (in order).
 4. `npm run dev`
 
 ## Environment variables

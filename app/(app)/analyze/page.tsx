@@ -42,6 +42,7 @@ export default function AnalyzePage() {
   const [insufficient, setInsufficient] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
+  const [retainInput, setRetainInput] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function loadHistory() {
@@ -97,7 +98,7 @@ export default function AnalyzePage() {
       const res = await fetch("/api/ai/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ resumeText, jobDescription, idempotencyKey }),
+        body: JSON.stringify({ resumeText, jobDescription, idempotencyKey, retainInput }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -182,6 +183,20 @@ export default function AnalyzePage() {
           <div className="mt-1 text-right font-mono text-xs text-ink-faint">
             {resumeText.length}/20000
           </div>
+          <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs text-ink-muted">
+            <input
+              type="checkbox"
+              checked={retainInput}
+              onChange={(e) => setRetainInput(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Save my resume text for history (unchecked by default; only character counts are stored).{" "}
+              <a href="/privacy" className="font-medium text-accent hover:underline">
+                Privacy notice
+              </a>
+            </span>
+          </label>
         </Card>
 
         <Card>

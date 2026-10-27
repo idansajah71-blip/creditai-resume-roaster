@@ -15,6 +15,7 @@ const bodySchema = z.object({
   resumeText: z.string().min(1).max(20000),
   jobDescription: z.string().min(1).max(10000),
   idempotencyKey: z.string().min(8).max(128).optional(),
+  retainInput: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,6 +38,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "invalid input" }, { status: 400 });
   }
   const { resumeText, jobDescription } = parsed.data;
+  const retainInput = parsed.data.retainInput === true;
+
+  // Privacy default: raw resume text is not stored. When the user does not opt
+  // in, input is replaced by a length-only summary before the job is finalized.
+  const redactedInput = () => JSON.stringify({ resumeChars: resumeText.length, jobChars: jobDescription.length });
 
   const service = createServiceClient();
 
@@ -147,7 +153,14 @@ export async function POST(request: Request) {
   try {
     raw = await analyzeResume(resumeText, jobDescription, { language });
   } catch {
-    await service.from("ai_jobs").update({ status: "failed", error: "ai_request_failed" }).eq("id", job.id);
+    await service
+      .from("ai_jobs")
+      .update({
+        status: "failed",
+        error: "ai_request_failed",
+        ...(retainInput ? {} : { input: redactedInput() }),
+      })
+      .eq("id", job.id);
     await refundReservation(reservationId);
     return NextResponse.json({ success: false, message: "ai request failed" }, { status: 502 });
   }
@@ -157,7 +170,14 @@ export async function POST(request: Request) {
   try {
     result = analysisResultSchema.parse(JSON.parse(raw));
   } catch {
-    await service.from("ai_jobs").update({ status: "failed", error: "invalid_output" }).eq("id", job.id);
+    await service
+      .from("ai_jobs")
+      .update({
+        status: "failed",
+        error: "invalid_output",
+        ...(retainInput ? {} : { input: redactedInput() }),
+      })
+      .eq("id", job.id);
     await refundReservation(reservationId);
     return NextResponse.json({ success: false, message: "invalid ai output" }, { status: 502 });
   }
@@ -192,7 +212,12 @@ export async function POST(request: Request) {
   // persist result
   await service
     .from("ai_jobs")
-    .update({ status: "succeeded", result: JSON.stringify(result), completed_at: new Date().toISOString() })
+    .update({
+      status: "succeeded",
+      result: JSON.stringify(result),
+      completed_at: new Date().toISOString(),
+      ...(retainInput ? {} : { input: redactedInput() }),
+    })
     .eq("id", job.id);
 
   // finalize reservation

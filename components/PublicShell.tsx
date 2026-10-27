@@ -26,6 +26,19 @@ export default function PublicShell({ children }: { children: React.ReactNode })
         </div>
       </header>
       <main className="mx-auto max-w-[1120px] px-5 py-8 md:px-8">{children}</main>
+      <footer className="mt-8 border-t border-border">
+        <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm text-ink-muted md:px-8">
+          <span className="font-bold text-ink">CreditAI</span>
+          <div className="flex gap-4">
+            <Link href="/privacy" className="hover:text-ink">
+              Privacy
+            </Link>
+            <Link href="/judges" className="hover:text-ink">
+              Judge guide
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
