@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       id?: string;
       amount?: { value?: string; currency_code?: string };
       supplementary_data?: { related_ids?: { order_id?: string } };
+      links?: { rel: string; href: string }[];
     };
   };
   try {
@@ -111,6 +112,36 @@ export async function POST(request: Request) {
             .update({ status: "captured", capture_id: captureId })
             .eq("paypal_order_id", orderId);
         }
+      }
+    }
+  }
+
+  if (event.event_type === "PAYMENT.CAPTURE.REFUNDED") {
+    const resource = event.resource || {};
+    const refundId = resource.id;
+    const amount = resource?.amount?.value;
+    const currency = resource?.amount?.currency_code;
+    const orderId = resource?.supplementary_data?.related_ids?.order_id;
+    // Capture id fallback: "up" link points to /v2/payments/captures/{id}/refund
+    const upHref = resource.links?.find((l) => l.rel === "up")?.href || "";
+    const captureIdFromLink = /captures\/([A-Za-z0-9]+)/.exec(upHref)?.[1] || null;
+
+    if (refundId && amount && currency) {
+      // Already processed by the app? (refund initiated via /api/paypal/refunds)
+      const { data: known } = await service
+        .from("refund_requests")
+        .select("id")
+        .eq("paypal_refund_id", refundId)
+        .maybeSingle();
+
+      if (!known && (orderId || captureIdFromLink)) {
+        await service.rpc("apply_external_refund", {
+          p_paypal_order_id: orderId || null,
+          p_capture_id: captureIdFromLink,
+          p_refund_id: refundId,
+          p_amount: Number(amount),
+          p_currency: currency,
+        });
       }
     }
   }

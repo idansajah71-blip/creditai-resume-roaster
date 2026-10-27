@@ -135,6 +135,33 @@ export async function capturePayPalOrder(orderId: string): Promise<CaptureResult
   };
 }
 
+export type RefundResult = { id: string; status: string };
+
+export async function refundCapture(
+  captureId: string,
+  amount: string,
+  currency: string,
+  requestId: string,
+  note: string,
+): Promise<RefundResult> {
+  const token = await getAccessToken();
+  const res = await fetch(`${base()}/v2/payments/captures/${captureId}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "PayPal-Request-Id": requestId,
+    },
+    body: JSON.stringify({
+      amount: { value: amount, currency_code: currency },
+      note_to_payer: note,
+    }),
+  });
+  if (!res.ok) throw new Error("paypal_refund_failed");
+  const data = (await res.json()) as { id: string; status: string };
+  return { id: data.id, status: data.status };
+}
+
 export async function verifyWebhookSignature(
   headers: Record<string, string>,
   event: unknown,

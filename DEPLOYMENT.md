@@ -7,7 +7,7 @@
 4. Deploy.
 
 ## Database
-- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql` in Supabase SQL editor (in order).
+- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql` in Supabase SQL editor (in order).
 
 ## Cost protection (OpenAI)
 - In the OpenAI dashboard, set a hard monthly spend limit on your project. This caps real cost even if env limits are misconfigured.
@@ -27,8 +27,9 @@
 
 ## PayPal Sandbox
 - Create Sandbox app, set webhook URL to `https://<domain>/api/paypal/webhook`.
-- Subscribe to `PAYMENT.CAPTURE.COMPLETED`.
+- Subscribe to `PAYMENT.CAPTURE.COMPLETED` **and** `PAYMENT.CAPTURE.REFUNDED`.
 - Copy Webhook ID into `PAYPAL_WEBHOOK_ID`.
+- Set `NEXT_PUBLIC_PAYPAL_CLIENT_ID` to enable inline Smart Buttons on `/credits` (fallback redirect flow works without it).
 
 ## Verify
 - `npm run build` must pass.

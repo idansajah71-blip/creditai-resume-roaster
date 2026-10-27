@@ -25,14 +25,32 @@ flowchart LR
 ## Setup
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill values.
-3. Run migrations `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`.
+3. Run migrations `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql` (in order).
 4. `npm run dev`
 
 ## Environment variables
 See `.env.example`.
 
 ## PayPal Sandbox
-Create a sandbox app, set webhook URL to `/api/paypal/webhook`, subscribe to `PAYMENT.CAPTURE.COMPLETED`.
+Create a sandbox app at developer.paypal.com, set the webhook URL to `/api/paypal/webhook`.
+
+Subscribe the webhook to **both** events:
+- `PAYMENT.CAPTURE.COMPLETED`
+- `PAYMENT.CAPTURE.REFUNDED` (reflects dashboard refunds in the ledger; do not skip it)
+
+### How PayPal is used
+Endpoints called server-side:
+- `POST /v1/oauth2/token` — client-credentials access token (lib/paypal.ts `getAccessToken`).
+- `POST /v2/checkout/orders` — create an order with server-side prices and `PayPal-Request-Id` (idempotency).
+- `POST /v2/checkout/orders/{id}/capture` — capture after buyer approval.
+- `GET /v2/checkout/orders/{id}` — recovery lookups when capture is ambiguous (`ORDER_ALREADY_CAPTURED`).
+- `POST /v2/payments/captures/{id}/refund` — partial refunds of unused credits, with `PayPal-Request-Id` and `note_to_payer`.
+- `POST /v1/notifications/verify-webhook-signature` — webhook authenticity verification.
+
+Client-side:
+- PayPal JS SDK `https://www.paypal.com/sdk/js?client-id=...&currency=USD&intent=capture` rendered inline via Buttons on `/credits`, with the classic redirect flow as fallback.
+
+Webhooks handled: `PAYMENT.CAPTURE.COMPLETED` (grant credits, idempotent by event + capture id) and `PAYMENT.CAPTURE.REFUNDED` (ledger + counters, idempotent by refund id; app-initiated refunds are skipped via `refund_requests.paypal_refund_id`).
 
 ## Judge test script
 See `/judges` page.
