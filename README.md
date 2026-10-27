@@ -1,17 +1,17 @@
 # CreditAI Resume Roaster
 
-CreditAI is a resume tool that proves its claims: it analyzes your resume against a real job description with real OpenAI inference, shows a before/after match estimate, and diffs the rewritten resume against your original to flag every fact the AI added. Billing is atomic credit-based, tested end to end against PayPal Sandbox (orders, captures, partial refunds, verified webhooks).
+CreditAI is a resume tool that proves its claims: it analyzes your resume against a real job description with real OpenAI inference, shows a before/after match estimate, and diffs the rewritten resume against your original to flag every fact the AI added. Billing is atomic credit-based. PayPal Sandbox flows (orders, captures, partial refunds, verified webhooks) are implemented and covered by the automated test suite (vitest, with PayPal/OpenAI mocked in tests only); a manual verification checklist is at the end of this README.
 
 ## Problem and audience
 
-- Job seekers preparing for online hiring processes mostly endure time-boxed, evidence-based screens: recruiters compare candidates against a concrete job description, not vibes. Generic AI resume tools reply with subjective advice ("add more metrics") and no receipts; worse, auto-rewrites commonly invent companies, years, or achievements. The same tooling gap applies to Indonesian campus hiring programs (the project's first users were students preparing recruitment tests and applications in both English and Indonesian).
+- Job seekers preparing for online hiring processes mostly endure time-boxed, evidence-based screens: recruiters compare candidates against a concrete job description, not vibes. Generic AI resume tools reply with subjective advice ("add more metrics") and no receipts; worse, auto-rewrites commonly invent companies, years, or achievements. The same tooling gap applies to Indonesian campus hiring programs, which run screening in both English and Indonesian.
 - Audience: entry-level and early-career developers and analysts (Indonesian or English) applying through online job boards, cheap hiring assessments, or campus recruitment programs.
 - Specific pain this solves: unverifiable AI advice, fabricated rewrites, and opaque credit systems. CreditAI shows requirement-by-requirement evidence, flags unverified details deterministically, meters analysis with atomic credits, and supports partial refunds of unused credits.
 
 ## Live demo
 
 Placeholder: https://your-deployment.vercel.app
-Company/logistics demo guide: https://your-deployment.vercel.app/judges
+Judge quick-start page: https://your-deployment.vercel.app/judges
 
 ## Screenshots
 
@@ -80,22 +80,22 @@ Webhooks handled: `PAYMENT.CAPTURE.COMPLETED` (credit grant, idempotent by captu
 - Analysis (model configurable via `OPENAI_MODEL`, default `gpt-4o-mini`): one structured Chat Completions call with a strict JSON schema (`lib/ai-schema.ts`), validated with Zod. Prompt includes requirement matches with evidence, 3 strengths, 5 weaknesses, missing keywords, recommendations, and a rewritten resume whose facts must come from the original.
 - Before/after estimate: a cheap second call (`scoreResume`) scores the rewritten resume with the same rubric; failure omits the delta silently at no user cost.
 - Fabrication guard (`lib/fabrication-guard.ts`): deterministic extraction of numbers with units, percentages, money, years, and capitalized multi-word names from the rewrite, matched against the original resume (normalizing thousand separators and money formats); job description mentions count as allowed only on lines with a skills context. More than 2 flagged details triggers one automatic rewrite retry with a stricter instruction, at no extra credit.
-- Refund agent (`lib/refund-agent.ts`): "AI proposes, code disposes." The agent only sees request facts and returns `{ decision: approve|deny, message }`. Eligibility, allocation, and amounts are deterministic TypeScript in integer cents (`lib/refund-math.ts`): refundable = purchased - refunded, capped by the cash left in each order; max 3 refund requests per 30 days; eligibility is checked and denials happen before any AI call.
+- Refund agent (`lib/refund-agent.ts`): "AI proposes, code disposes." The agent never decides: once the deterministic checks pass (refundable = purchased - refunded capped per order, max 3 refund requests per 30 days, orders within the 14-day window, allocation in integer cents in `lib/refund-math.ts`), the server approves and the model only writes the 2-3 sentence customer message. Denials are purely deterministic (limit reached, not enough unused credits, window expired) and happen before any AI call. If the model call fails, a fixed fallback message is used and the refund still processes.
 - Language handling (`lib/language.ts`): dictionary heuristic (no dependency) sets the output language to match the resume.
 - Evaluation harness: `npm run eval` runs 5 fixture pairs against the real model and reports the average unverified-detail count and average score delta (costs real API money; not run in CI; see docs/EVALUATION.md).
 
 ## AI tools used
 
-Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrite scoring, and the refund agent. Development: OpenCode assistant (GLM) for scaffolding, refactoring, and test generation; GitHub Copilot-style review workflow. See AI_TOOLS.md (Devpost "Tools used" text is in DEVPOST.md).
+Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrite scoring, and the refund agent. Development: OpenCode assistant (GLM) for scaffolding, refactoring, and test generation. See AI_TOOLS.md (Devpost "Tools used" text is in DEVPOST.md).
 
 ## Setup
 
 1. `npm install`
-2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`.
+2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`.
 3. Copy `.env.example` to `.env.local` and fill values (Supabase URL/anon/service keys, OpenAI key, PayPal sandbox client id/secret/webhook id, app URL, repo URL, cost caps, salt).
 4. PayPal Sandbox: create an app at developer.paypal.com, set its webhook URL to `https://<your-domain>/api/paypal/webhook`, subscribe to both `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`, copy the webhook id into `PAYPAL_WEBHOOK_ID`, and copy client id/secret into `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` (plus `NEXT_PUBLIC_PAYPAL_CLIENT_ID` for inline buttons).
 5. Schedule the input purge (DEPLOYMENT.md, pg_cron): `select cron.schedule('purge-job-inputs','45 2 * * *',$$select public.purge_old_job_inputs(interval '30 days');$$);` and demo cleanup on the same page.
-6. `npm run dev` (local) or `npm run build && npm start`. Tests: `npm test` (62 tests, vitest; PayPal/OpenAI are mocked in tests only). Typecheck: `npm run typecheck`. Lint: `npm run lint`.
+6. `npm run dev` (local) or `npm run build && npm start`. Tests: `npm test` (82 tests, vitest; PayPal/OpenAI are mocked in tests only). Typecheck: `npm run typecheck`. Lint: `npm run lint`.
 
 ## Security and idempotency
 
@@ -112,6 +112,19 @@ Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrit
 - Rate limiters are in-memory + database-backed; horizontal scale needs a shared store (e.g. Upstash) for full accuracy.
 - The demo account flow expects Supabase email confirmation to be disabled in the project settings.
 - The public URL is not verified in this environment (no deployment performed from here); `npm run build` must pass locally.
+
+## Verified manually on 2026-10-27
+
+Filled in by the maintainer after testing the deployed URL (all unticked until then):
+
+- [ ] Sign-up works; demo session creates an account with 5 credits.
+- [ ] Buying a credit package with a Sandbox buyer credits the account after the capture (webhook path included).
+- [ ] Analysis consumes 1 credit, returns evidence-based score/roast/rewrite, and appears in history.
+- [ ] Partial refund of unused credits processes on PayPal Sandbox and the ledger shows the compensation entry.
+- [ ] The `PAYMENT.CAPTURE.REFUNDED` webhook does not double-deduct credits for an app-initiated refund.
+- [ ] One-click data deletion empties analysis history and counts.
+- [ ] `/api/health` reports ok on the deployed URL.
+- [ ] All `.env.example` variables are set in the deployment environment.
 
 ## License
 

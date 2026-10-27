@@ -39,9 +39,9 @@ Key implementation decisions:
 ## Accomplishments that we're proud of
 
 - Every credit mutation is atomic and idempotent, with a ledger a human can audit line by line.
-- Real E2E payment flows on PayPal Sandbox: capture, webhook grant, partial refund, refund webhook deduplication, and recovery paths for ambiguous captures.
+- Complete payment flows built out on PayPal Sandbox paths: capture, webhook grant, partial refund, refund webhook deduplication, and recovery paths for ambiguous captures; covered by the automated suite (PayPal mocked in tests). A manual end-to-end verification checklist ships in the README.
 - Privacy defaults as strong as the accounting: no retention by default, scheduled purge, user-triggered deletion, and a delete route that cannot unbalance the books.
-- 62 automated tests, including regression tests for the exact failure modes that motivated the design (insufficient credits, double capture, duplicate webhooks, malformed AI output).
+- 82 automated tests, including regression tests for the exact failure modes that motivated the design (insufficient credits, double capture, duplicate webhooks, malformed AI output).
 
 ## What we learned
 

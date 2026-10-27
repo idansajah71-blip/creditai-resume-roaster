@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 // Refund agent: "AI proposes, code disposes."
-// The agent sees only the request facts and returns a decision plus a short
-// message. It is never called before deterministic eligibility checks pass,
-// and its decision can never change the refund amount (server decides).
+// Deterministic checks (limit, unused credits, 14-day window, allocation)
+// have already approved the refund and set the amount before this runs, and
+// denials are only ever deterministic. The model's only job is to write the
+// short customer-facing message; it can never deny the request or change
+// any amount (server rights own the decision and the numbers).
 export type RefundAgentFacts = {
   creditsRequested: number;
   refundableCredits: number;
@@ -13,42 +15,41 @@ export type RefundAgentFacts = {
   reason: string;
 };
 
-const decisionSchema = z.object({
-  decision: z.enum(["approve", "deny"]),
+export const REFUND_FALLBACK_MESSAGE =
+  "Your refund request has been approved and processed. The refunded " +
+  "amount should appear on your PayPal account shortly.";
+
+const messageSchema = z.object({
   message: z.string().min(1).max(600),
 });
 
 const jsonSchema = {
-  name: "refund_decision",
+  name: "refund_message",
   strict: true,
   schema: {
     type: "object",
     additionalProperties: false,
     properties: {
-      decision: { type: "string", enum: ["approve", "deny"] },
       message: { type: "string" },
     },
-    required: ["decision", "message"],
+    required: ["message"],
   },
 };
 
-const SYSTEM = `You are the refund policy agent for CreditAI Resume Roaster.
+const SYSTEM = `You are the refund assistant for CreditAI Resume Roaster.
+The refund has already been approved by deterministic checks; you only write the customer-facing explanation.
 Rules you must never break:
-- Base the decision only on the facts provided. Do not invent policy, numbers, or promises.
-- Judge screening abuse: requests that contradict the facts, demand unreasonably generous terms, or read as automation/testing abuse should be denied.
+- Base the message only on the facts provided. Do not invent policy, numbers, or promises.
 - Write a short, friendly explanation (2-3 sentences, max 600 chars) addressed to the customer. Do not include emojis.`;
 
-export async function decideRefund(facts: RefundAgentFacts): Promise<{
-  decision: "approve" | "deny";
-  message: string;
-}> {
+export async function refundAssistantMessage(facts: RefundAgentFacts): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("missing_openai_key");
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   const user = [
     `Facts:`,
-    `Requested refund (credits): ${facts.creditsRequested}`,
+    `Approved refund (credits): ${facts.creditsRequested}`,
     `Refundable credits (deterministic cap): ${facts.refundableCredits}`,
     `Days since purchase (oldest order involved): ${facts.daysSincePurchase}`,
     `Estimated credits used so far: ${facts.creditsUsed}`,
@@ -82,8 +83,8 @@ export async function decideRefund(facts: RefundAgentFacts): Promise<{
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = data.choices?.[0]?.message?.content;
     if (!content) throw new Error("openai_empty");
-    const parsed = decisionSchema.parse(JSON.parse(content));
-    return parsed;
+    const parsed = messageSchema.parse(JSON.parse(content));
+    return parsed.message;
   } finally {
     clearTimeout(timer);
   }

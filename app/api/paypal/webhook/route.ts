@@ -135,13 +135,43 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (!known && (orderId || captureIdFromLink)) {
-        await service.rpc("apply_external_refund", {
-          p_paypal_order_id: orderId || null,
-          p_capture_id: captureIdFromLink,
-          p_refund_id: refundId,
-          p_amount: Number(amount),
-          p_currency: currency,
-        });
+        // Dashboard refund in flight? A refund_requests row for the same order,
+        // same amount, pending/approved/refunded, touched within the last
+        // 15 minutes means this webhook raced the refund route before it stored
+        // paypal_refund_id. The app already deducted those credits, so skip.
+        let appHandled = false;
+        if (orderId) {
+          const cutoff = Date.now() - 15 * 60 * 1000;
+          const { data: recent } = await service
+            .from("refund_requests")
+            .select("amount, status, created_at, updated_at")
+            .eq("paypal_order_id", orderId)
+            .in("status", ["pending", "approved", "refunded"]);
+          appHandled = (recent ?? []).some(
+            (row: { amount: string | number; created_at: string; updated_at: string | null }) => {
+              const touched = Math.max(
+                new Date(row.created_at).getTime(),
+                new Date(row.updated_at || row.created_at).getTime(),
+              );
+              return Number(row.amount) === Number(amount) && touched >= cutoff;
+            },
+          );
+        }
+
+        if (!appHandled) {
+          const { error: refundRpcErr } = await service.rpc("apply_external_refund", {
+            p_paypal_order_id: orderId || null,
+            p_capture_id: captureIdFromLink,
+            p_refund_id: refundId,
+            p_amount: Number(amount),
+            p_currency: currency,
+          });
+          if (refundRpcErr) {
+            // Unknown failure: leave the event unprocessed so PayPal can retry it.
+            console.error("apply_external_refund failed", eventId, refundRpcErr.message);
+            return NextResponse.json({ success: false }, { status: 500 });
+          }
+        }
       }
     }
   }

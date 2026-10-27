@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { refundCapture } from "@/lib/paypal";
-import { decideRefund } from "@/lib/refund-agent";
+import { refundAssistantMessage, REFUND_FALLBACK_MESSAGE } from "@/lib/refund-agent";
 import {
   allocateRefund,
   fromCents,
@@ -20,6 +20,15 @@ const bodySchema = z.object({
   reason: z.string().min(10).max(1000),
 });
 const RATE_LIMIT_30D = 3;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Upper bound of stored segment keys considered for a replay lookup. A refund
+// is fragmented at most once per captured order; beyond that the reserve RPC
+// refuses anyway. Keeps the .in() candidate list exact (no LIKE wildcards).
+const MAX_SEARCH_SEGMENTS = 64;
+
+function segmentKeys(userId: string, requestKey: string): string[] {
+  return Array.from({ length: MAX_SEARCH_SEGMENTS }, (_, i) => `${userId}:${requestKey}:${i}`);
+}
 
 type RefundRow = {
   id: string;
@@ -58,13 +67,19 @@ export async function POST(request: Request) {
   const { credits, reason } = parsed.data;
 
   const service = createServiceClient();
-  const requestKey = request.headers.get("idempotency-key") || crypto.randomUUID();
+  // The client key is only trusted when it is a UUID; anything else (e.g. "%")
+  // is replaced by a server-generated key so user-controlled wildcards can
+  // never reach the idempotency lookup.
+  const headerKey = request.headers.get("idempotency-key") || "";
+  const requestKey = UUID_RE.test(headerKey) ? headerKey : crypto.randomUUID();
 
-  // Idempotent replay: same client key already has segments stored.
+  // Idempotent replay: same client key already has segments stored. Exact
+  // match on a namespaced candidate list, always scoped to this user.
   const { data: replay } = await service
     .from("refund_requests")
     .select("*")
-    .like("idempotency_key", `${requestKey}%`)
+    .eq("user_id", user.id)
+    .in("idempotency_key", segmentKeys(user.id, requestKey))
     .order("created_at", { ascending: true });
   const replayRows = (replay as RefundRow[] | null) || [];
   if (replayRows.length > 0) {
@@ -98,12 +113,15 @@ export async function POST(request: Request) {
     return failure("Refund request limit reached (3 per 30 days).", 429);
   }
 
-  // Eligible orders: captured, refundable remainder > 0, newest first.
+  // Eligible orders: captured, created within the same 14-day window that
+  // reserve_purchase_refund enforces, refundable remainder > 0, newest first.
+  const since14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data: ordersRaw } = await service
     .from("paypal_orders")
     .select("paypal_order_id, capture_id, amount_value, currency, credits_to_grant, refunded_credits, refunded_amount, created_at")
     .eq("user_id", user.id)
     .eq("status", "captured")
+    .gte("created_at", since14d)
     .order("created_at", { ascending: false });
 
   const orders = ((ordersRaw as (OrderLike & { created_at: string })[]) || []).filter(
@@ -134,7 +152,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // AI agent facts (informational only; the server owns the amount).
+  // The refund is approved deterministically at this point; the model only
+  // writes the customer-facing message. A model failure must never block an
+  // eligible refund, so fall back to a fixed message and keep processing.
   const oldest = segments.reduce(
     (min, s) => Math.min(min, new Date(s.order.created_at || new Date().toISOString()).getTime()),
     Date.now(),
@@ -146,9 +166,9 @@ export async function POST(request: Request) {
   const purchasedTotal = orders.reduce((s, o) => s + o.credits_to_grant, 0);
   const refundableTotal = orders.reduce((s, o) => s + remainingCredits(o), 0);
 
-  let decision: { decision: "approve" | "deny"; message: string };
+  let aiMessage: string;
   try {
-    decision = await decideRefund({
+    aiMessage = await refundAssistantMessage({
       creditsRequested: credits,
       refundableCredits: refundableTotal,
       daysSincePurchase,
@@ -157,15 +177,7 @@ export async function POST(request: Request) {
       reason,
     });
   } catch {
-    // Fail safe: no AI decision, no money movement.
-    return failure("Refund assistant is temporarily unavailable. Try again later.", 503);
-  }
-
-  if (decision.decision === "deny") {
-    return NextResponse.json({
-      success: true,
-      data: { status: "denied", message: decision.message },
-    });
+    aiMessage = REFUND_FALLBACK_MESSAGE;
   }
 
   // Reserve credits + counters per segment, then refund via PayPal.
@@ -175,7 +187,7 @@ export async function POST(request: Request) {
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const idempotencyKey = `${requestKey}:${i}`;
+    const idempotencyKey = `${user.id}:${requestKey}:${i}`;
 
     const { data: row, error: rowErr } = await service
       .from("refund_requests")
@@ -186,7 +198,7 @@ export async function POST(request: Request) {
         amount: fromCents(seg.amountCents),
         currency: seg.order.currency,
         reason,
-        ai_decision: decision,
+        ai_decision: { message: aiMessage },
         status: "pending",
         idempotency_key: idempotencyKey,
       })
@@ -266,8 +278,8 @@ export async function POST(request: Request) {
   const totalAmount = results.reduce((s, r) => s + Number(r.amount), 0);
   const partial = results.length < segments.length;
   const message = partial
-    ? `${decision.message} Partial refund: ${errors.length} segment(s) failed.`
-    : decision.message;
+    ? `${aiMessage} Partial refund: ${errors.length} segment(s) failed.`
+    : aiMessage;
 
   return NextResponse.json({
     success: true,
@@ -291,11 +303,15 @@ export async function GET() {
   }
   const service = createServiceClient();
 
+  // Same 14-day window as reserve_purchase_refund so the UI never offers a
+  // refund the database would reject.
+  const since14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data: ordersRaw } = await service
     .from("paypal_orders")
     .select("paypal_order_id, amount_value, currency, credits_to_grant, refunded_credits, refunded_amount, created_at")
     .eq("user_id", user.id)
     .eq("status", "captured")
+    .gte("created_at", since14d)
     .order("created_at", { ascending: false });
 
   const orders = ((ordersRaw as OrderLike[]) || []).filter((o) => remainingCredits(o) > 0);

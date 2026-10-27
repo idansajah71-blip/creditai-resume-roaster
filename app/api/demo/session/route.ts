@@ -11,8 +11,16 @@ import {
 } from "@/lib/demo";
 
 export async function POST(request: Request) {
-  const ip = getClientIp(request);
-  const ipHash = hashIp(ip);
+  let ipHash: string;
+  try {
+    const ip = getClientIp(request);
+    ipHash = hashIp(ip);
+  } catch (e) {
+    // Missing DEMO_IP_SALT in production lands here instead of silently
+    // falling back to a public salt.
+    console.error("[demo] session refused:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ success: false, message: "demo session unavailable" }, { status: 500 });
+  }
   const service = createServiceClient();
 
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
