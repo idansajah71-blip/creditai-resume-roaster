@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { Sheet } from "@/components/ui/Sheet";
 
 type Checks = {
   database: boolean;
@@ -18,6 +17,8 @@ const ROWS: { key: keyof Checks; label: string; ok: string; fail: string }[] = [
   { key: "webhook_configured", label: "PayPal webhook", ok: "Configured", fail: "Missing" },
 ];
 
+/* Rubber-stamp status rows: OK stamps green, DOWN stamps red-pen, all in
+   monospaced uppercase like a print proof sheet. */
 export default function SystemStatusCard() {
   const [checks, setChecks] = useState<Checks | null>(null);
 
@@ -37,23 +38,29 @@ export default function SystemStatusCard() {
   }, []);
 
   return (
-    <Card>
-      <h2 className="text-lg font-semibold text-ink">System status</h2>
-      <p className="mt-1 text-sm text-ink-muted">Live health of the services this app depends on.</p>
-      <ul className="mt-4 space-y-2 text-sm">
+    <Sheet className="p-5">
+      <h2 className="type-h3 text-ink">System status</h2>
+      <p className="mt-1 text-sm leading-6 text-ink-2">Live health of the services this app depends on.</p>
+      <ul className="mt-4 space-y-0 text-sm">
         {ROWS.map((row) => (
-          <li key={row.key} className="flex items-center justify-between gap-3">
-            <span className="text-ink">{row.label}</span>
+          <li key={row.key} className="flex items-center justify-between gap-3 border-b border-line py-2.5 last:border-b-0">
+            <span className="text-ink-2">{row.label}</span>
             {!checks ? (
-              <Badge variant="neutral">Checking...</Badge>
+              <span className="font-mono text-[11px] uppercase leading-4 tracking-[0.08em] text-ink-3">
+                Checking...
+              </span>
             ) : checks[row.key] ? (
-              <Badge variant="success">{row.ok}</Badge>
+              <span className="font-mono text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] text-green">
+                {row.ok}
+              </span>
             ) : (
-              <Badge variant="danger">{row.fail}</Badge>
+              <span className="font-mono text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] text-red-pen">
+                {row.fail}
+              </span>
             )}
           </li>
         ))}
       </ul>
-    </Card>
+    </Sheet>
   );
 }

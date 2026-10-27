@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import PublicShell from "@/components/PublicShell";
+import AuthSplit from "@/components/AuthSplit";
+import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { Highlight, RedUnderline } from "@/components/ui/annotations";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,15 +41,23 @@ export default function RegisterPage() {
 
   return (
     <PublicShell>
-      <div className="mx-auto max-w-[420px]">
-        <div className="card p-8">
-          <h1 className="text-[28px] font-semibold leading-[34px] text-ink">Create account</h1>
+      <AuthSplit
+        quote={
+          <>
+            <Highlight>Led a team</Highlight> is a claim. Three engineers, one quarter, one{" "}
+            <RedUnderline>launch</RedUnderline> is a fact.
+          </>
+        }
+      >
+        <Sheet className="mx-auto max-w-[480px] p-6 md:p-8">
+          <h1 className="font-display text-[34px] leading-10 text-ink">Create account</h1>
+          <p className="mt-1 text-sm text-ink-3">Three free starter credits to try the review.</p>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="name">Display name</Label>
               <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -56,7 +67,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -68,7 +79,7 @@ export default function RegisterPage() {
               />
             </div>
             {error && (
-              <p className="text-sm text-danger" role="alert">
+              <p className="text-sm font-medium text-red-pen" role="alert">
                 {error}
               </p>
             )}
@@ -76,14 +87,14 @@ export default function RegisterPage() {
               Register
             </Button>
           </form>
-          <p className="mt-4 text-sm text-ink-muted">
+          <p className="mt-6 text-sm text-ink-2">
             Already have an account?{" "}
-            <Link href="/login" className="text-accent hover:underline">
+            <Link href="/login" className="font-medium text-blue underline underline-offset-2 hover:no-underline">
               Log in
             </Link>
           </p>
-        </div>
-      </div>
+        </Sheet>
+      </AuthSplit>
     </PublicShell>
   );
 }

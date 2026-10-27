@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PublicShell from "@/components/PublicShell";
 import { CopyField } from "@/components/ui/CopyField";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import SystemStatusCard from "@/components/SystemStatusCard";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,19 +12,25 @@ const buyerEmail = process.env.NEXT_PUBLIC_PAYPAL_BUYER_EMAIL || "";
 const buyerPass = process.env.NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD || "";
 const buyerConfigured = Boolean(buyerEmail) && Boolean(buyerPass);
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+/* Vertical stepper: a large serif numeral on a rule rail, content to the
+   right. The rail draws the reading order without colored decoration. */
+function Step({ n, title, last = false, children }: { n: number; title: string; last?: boolean; children: React.ReactNode }) {
   return (
-    <Card>
-      <div className="flex items-center gap-3">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft font-mono text-sm font-semibold text-accent">
-          {n}
-        </span>
-        <h2 className="text-lg font-semibold text-ink">{title}</h2>
+    <div className="flex gap-5 md:gap-8">
+      <div className="flex flex-col items-center self-stretch" aria-hidden="true">
+        <span className="font-display text-[40px] leading-10 text-ink md:text-[48px] md:leading-12">{n}</span>
+        {!last && <span className="mt-2 w-px flex-1 bg-line" />}
       </div>
-      <div className="mt-3">{children}</div>
-    </Card>
+      <div className="min-w-0 flex-1">
+        <h2 className="type-h3 pt-1 text-ink">{title}</h2>
+        <div className="mt-3">{children}</div>
+      </div>
+    </div>
   );
 }
+
+const stepBody = "max-w-[620px] text-sm leading-6 text-ink-2";
+const quietLink = "btn btn-secondary px-4 py-2 text-sm";
 
 export default function JudgesPage() {
   const router = useRouter();
@@ -65,109 +69,121 @@ export default function JudgesPage() {
 
   return (
     <PublicShell>
-      <div className="space-y-8">
-        <div className="rounded-[10px] border border-warning/30 bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
-          PayPal Sandbox mode. No real money is used.
-        </div>
-        <div>
-          <h1 className="text-[32px] font-semibold leading-[38px] text-ink md:text-[40px] md:leading-[44px]">
-            Judge quick-start
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
+      <div className="space-y-10">
+        <div className="space-y-2">
+          <div className="type-label">Evaluation protocol</div>
+          <h1 className="type-display text-ink">Reviewer guide</h1>
+          <p className="max-w-[620px] text-sm leading-6 text-ink-2">
             Five steps, about five minutes. Everything is real inference and real structure with
             sandbox money.
           </p>
         </div>
 
-        <SystemStatusCard />
+        <div className="rounded-[10px] bg-paper-sunken px-4 py-3 text-sm leading-6 text-ink-2">
+          PayPal Sandbox mode. No real money is used.
+        </div>
 
-        <Step n={1} title="Start a demo session">
-          <p className="text-sm text-ink-muted">
-            Creates a fresh, ephemeral account with 5 free credits (expires after 24 hours).
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Button onClick={startDemo} loading={busy}>
-              Start demo session
-            </Button>
-            <span className="text-xs text-ink-muted">Rate limited to 3 sessions per IP per hour.</span>
-          </div>
-          {error && (
-            <p className="mt-2 text-sm text-danger" role="alert">
-              {error}
-            </p>
-          )}
-        </Step>
-
-        <Step n={2} title="Run an analysis with sample data">
-          <p className="text-sm text-ink-muted">
-            On /analyze click <strong>Use sample data</strong>, then Analyze. Watch the score card:
-            the rewritten estimate, the fabrication check, and the requirement badges.
-          </p>
-          <div className="mt-3">
-            <a href="/analyze" className="btn btn-secondary px-4 py-2 text-sm">
-              Open Analyze
-            </a>
-          </div>
-        </Step>
-
-        <Step n={3} title="Buy credits with the sandbox buyer">
-          <p className="text-sm text-ink-muted">
-            On /credits choose Later for 10 credits, approve with the inline PayPal button using
-            these sandbox buyer credentials:
-          </p>
-          {buyerConfigured ? (
-            <div className="mt-4 space-y-3">
-              <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
-                  Buyer email
-                </div>
-                <CopyField value={buyerEmail} />
+        <ol className="space-y-10">
+          <li>
+            <Step n={1} title="Start a demo session">
+              <p className={stepBody}>
+                Creates a fresh, ephemeral account with 5 free credits (expires after 24 hours).
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={startDemo} loading={busy}>
+                  Start demo session
+                </Button>
+                <span className="font-mono text-xs leading-5 text-ink-3">
+                  Rate limited to 3 sessions per IP per hour.
+                </span>
               </div>
+              {error && (
+                <p className="text-sm font-medium text-red-pen" role="alert">
+                  {error}
+                </p>
+              )}
+            </Step>
+          </li>
+
+          <li>
+            <Step n={2} title="Run a review with sample data">
+              <p className={stepBody}>
+                On /analyze click <strong>Use sample data</strong>, then Analyze. Watch the score card:
+                the rewritten estimate, the fabrication check, and the requirement badges.
+              </p>
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
-                  Buyer password
-                </div>
-                <CopyField value={buyerPass} />
+                <a href="/analyze" className={quietLink}>
+                  Open Analyze
+                </a>
               </div>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-warning">
-              Buyer credentials not configured. Set NEXT_PUBLIC_PAYPAL_BUYER_EMAIL and
-              NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD, or create your own Sandbox personal account
-              (developer.paypal.com - Testing tools - Sandbox accounts).
-            </p>
-          )}
-          <div className="mt-3">
-            <a href="/credits" className="btn btn-secondary px-4 py-2 text-sm">
-              Open Credits
-            </a>
-          </div>
-        </Step>
+            </Step>
+          </li>
 
-        <Step n={4} title="Request a partial refund">
-          <p className="text-sm text-ink-muted">
-            Still on /credits, use the refund panel for your purchase (e.g. refund 5 of 10 unused
-            credits). Answer the refund questions: the AI refund agent proposes a decision within
-            deterministic guardrails, the PayPal Refunds API is called server-side, and the ledger
-            compensates your credit balance atomically.
-          </p>
-        </Step>
+          <li>
+            <Step n={3} title="Buy credits with the sandbox buyer">
+              <p className={stepBody}>
+                On /credits choose Later for 10 credits, approve with the inline PayPal button using
+                these sandbox buyer credentials:
+              </p>
+              {buyerConfigured ? (
+                <div className="max-w-[440px] space-y-3">
+                  <div>
+                    <div className="type-label mb-1">Buyer email</div>
+                    <CopyField value={buyerEmail} />
+                  </div>
+                  <div>
+                    <div className="type-label mb-1">Buyer password</div>
+                    <CopyField value={buyerPass} />
+                  </div>
+                </div>
+              ) : (
+                <p className={`${stepBody} text-amber`}>
+                  Buyer credentials not configured. Set NEXT_PUBLIC_PAYPAL_BUYER_EMAIL and
+                  NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD, or create your own Sandbox personal account
+                  (developer.paypal.com - Testing tools - Sandbox accounts).
+                </p>
+              )}
+              <div>
+                <a href="/credits" className={quietLink}>
+                  Open Credits
+                </a>
+              </div>
+            </Step>
+          </li>
 
-        <Step n={5} title="Open Transactions">
-          <p className="text-sm text-ink-muted">
-            The full credit ledger: purchase grants, debits per analysis, refunds with their
-            compensation, and payment references from the captured order.
-          </p>
-          <div className="mt-3">
-            <a href="/transactions" className="btn btn-secondary px-4 py-2 text-sm">
-              Open Transactions
-            </a>
-          </div>
-        </Step>
+          <li>
+            <Step n={4} title="Request a partial refund and see it in Transactions">
+              <p className={stepBody}>
+                Still on /credits, use the refund panel for your purchase (e.g. refund 5 of 10 unused
+                credits). Answer the refund questions: the AI refund agent proposes a decision within
+                deterministic guardrails, the PayPal Refunds API is called server-side, and the ledger
+                compensates your credit balance atomically.
+              </p>
+            </Step>
+          </li>
 
-        <Card>
-          <h2 className="text-lg font-semibold text-ink">What to look for</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink">
+          <li>
+            <Step n={5} title="Check the ledger and system status" last>
+              <p className={stepBody}>
+                The full credit ledger: purchase grants, debits per analysis, refunds with their
+                compensation, and payment references from the captured order.
+              </p>
+              <div>
+                <a href="/transactions" className={quietLink}>
+                  Open Transactions
+                </a>
+              </div>
+              <div className="pt-2">
+                <SystemStatusCard />
+              </div>
+            </Step>
+          </li>
+        </ol>
+
+        {/* Editor's margin note: what a grader should verify */}
+        <section className="rounded-[10px] border border-l-2 border-l-red-pen border-line bg-paper-sunken p-6">
+          <h2 className="type-label text-[12px] normal-case text-ink">What to look for</h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink-2">
             <li>
               <strong>Atomic credits:</strong> the credit is reserved, then consumed or refunded. A
               failed analysis never leaves the balance wrong.
@@ -190,11 +206,17 @@ export default function JudgesPage() {
             </li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Badge variant="accent">No shared credentials</Badge>
-            <Badge variant="accent">Ephemeral accounts</Badge>
-            <Badge variant="accent">Sandbox money only</Badge>
+            <span className="rounded-[4px] border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.08em] text-ink-3">
+              No shared credentials
+            </span>
+            <span className="rounded-[4px] border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.08em] text-ink-3">
+              Ephemeral accounts
+            </span>
+            <span className="rounded-[4px] border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.08em] text-ink-3">
+              Sandbox money only
+            </span>
           </div>
-        </Card>
+        </section>
       </div>
     </PublicShell>
   );

@@ -5,9 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import PublicShell from "@/components/PublicShell";
+import AuthSplit from "@/components/AuthSplit";
+import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { RedUnderline, Rule } from "@/components/ui/annotations";
 
 function LoginForm() {
   const router = useRouter();
@@ -35,12 +38,18 @@ function LoginForm() {
 
   return (
     <PublicShell>
-      <div className="mx-auto max-w-[420px]">
-        <div className="card p-8">
-          <h1 className="text-[28px] font-semibold leading-[34px] text-ink">Log in</h1>
-          <p className="mt-1 text-sm text-ink-muted">Welcome back.</p>
+      <AuthSplit
+        quote={
+          <>
+            Your resume reads like the job description that wrote it. <RedUnderline>Show me numbers.</RedUnderline>
+          </>
+        }
+      >
+        <Sheet className="mx-auto max-w-[480px] p-6 md:p-8">
+          <h1 className="font-display text-[34px] leading-10 text-ink">Log in</h1>
+          <p className="mt-1 text-sm text-ink-3">Welcome back.</p>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -50,7 +59,7 @@ function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -61,7 +70,7 @@ function LoginForm() {
               />
             </div>
             {error && (
-              <p className="text-sm text-danger" role="alert">
+              <p className="text-sm font-medium text-red-pen" role="alert">
                 {error}
               </p>
             )}
@@ -69,11 +78,9 @@ function LoginForm() {
               Log in
             </Button>
           </form>
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase tracking-[0.06em] text-ink-faint">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
+
+          <Rule label="or" className="my-6" />
+
           <Button
             type="button"
             variant="secondary"
@@ -107,19 +114,20 @@ function LoginForm() {
               }
             }}
           >
-            Start a fresh demo session
+            Log in as demo judge
           </Button>
-          <p className="mt-2 text-xs text-ink-muted">
-            Creates a new account with 5 free credits. Expires after 24 hours.
+          <p className="mt-2 text-xs leading-5 text-ink-2">Pre-funded demo account for reviewers.</p>
+          <p className="mt-1 font-mono text-[11px] leading-4 text-ink-3">
+            Creates a fresh account with 5 free credits. Expires after 24 hours.
           </p>
-          <p className="mt-4 text-sm text-ink-muted">
+          <p className="mt-6 text-sm text-ink-2">
             No account?{" "}
-            <Link href="/register" className="text-accent hover:underline">
+            <Link href="/register" className="font-medium text-blue underline underline-offset-2 hover:no-underline">
               Register
             </Link>
           </p>
-        </div>
-      </div>
+        </Sheet>
+      </AuthSplit>
     </PublicShell>
   );
 }
