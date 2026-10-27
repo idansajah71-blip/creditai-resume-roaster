@@ -2,13 +2,13 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card } from "@/components/ui/Card";
+import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Textarea } from "@/components/ui/Textarea";
-import { Badge } from "@/components/ui/Badge";
 import { Toast } from "@/components/ui/Toast";
+import { Stamp, MarginNote, Rule } from "@/components/ui/annotations";
 import PayPalCheckout, { type PayPalCheckoutStatus } from "@/components/PayPalCheckout";
 import { fetchWithTimeout, clientErrorMessage, PAYPAL_UNREACHABLE_MESSAGE } from "@/lib/fetch-timeout";
 
@@ -40,16 +40,27 @@ type RefundSummary = {
 
 type PanelKind = "success" | "info" | "danger";
 
-function Panel({ kind, children }: { kind: PanelKind; children: React.ReactNode }) {
+const stampTone: Record<string, "green" | "red" | "amber"> = {
+  refunded: "green",
+  failed: "red",
+};
+
+function Panel({ kind, children, onRetry }: { kind: PanelKind; children: React.ReactNode; onRetry?: () => void }) {
   const cls =
     kind === "success"
-      ? "border-success/30 bg-success-soft text-success"
+      ? "border-green/40 bg-green-soft"
       : kind === "danger"
-        ? "border-danger/30 bg-danger-soft text-danger"
-        : "border-border bg-surface-muted text-ink";
+        ? "border-red-pen/40 bg-red-soft"
+        : "border-line bg-paper-sunken";
   return (
-    <div className={`rounded-[10px] border ${cls} px-4 py-3 text-sm font-medium`} role="status">
-      {children}
+    <div className={`flex flex-wrap items-center gap-3 rounded-[10px] border px-4 py-3 text-sm ${cls}`} role="status">
+      {kind === "success" && <Stamp tone="ink">Paid</Stamp>}
+      <span className="min-w-0 flex-1 text-ink-2">{children}</span>
+      {kind === "danger" && onRetry && (
+        <button type="button" onClick={onRetry} className="btn btn-secondary px-3 text-sm">
+          Try again
+        </button>
+      )}
     </div>
   );
 }
@@ -225,45 +236,93 @@ function CreditsInner() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[10px] border border-warning/30 bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
-        PayPal Sandbox mode. No real money is used.
-      </div>
-      <h1 className="text-[32px] font-semibold leading-[38px] text-ink md:text-[40px] md:leading-[44px]">
-        Buy credits
-      </h1>
-      <p className="text-ink-muted">
-        Current balance: <span className="font-mono text-ink">{balance ?? "..."}</span>
-      </p>
-      {panel && <Panel kind={panel.kind}>{panel.text}</Panel>}
-      {error && <p className="text-sm text-danger" role="alert">{error}</p>}
-      {loading && <p className="text-sm text-ink-muted">Processing...</p>}
-
-      {!sdkUnavailable && <PayPalCheckout packages={PACKAGES} onStatus={onCheckoutStatus} onRedirect={buyRedirect} redirectDisabled={loading} />}
-      {sdkUnavailable && (
-        <div className="grid gap-4 md:grid-cols-3">
-          {PACKAGES.map((p) => (
-            <Card key={p.id}>
-              <div className="text-2xl font-bold text-ink">{p.credits} credits</div>
-              <div className="text-ink-muted">${p.amount} USD</div>
-              <Button onClick={() => buyRedirect(p.id)} disabled={loading} className="mt-4 w-full">
-                Buy with PayPal
-              </Button>
-            </Card>
-          ))}
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <div className="type-label">Credits</div>
+          <h1 className="type-display text-ink">Buy credits</h1>
         </div>
-      )}
+        <div className="md:text-right">
+          <div className="type-label">Balance</div>
+          <div className="font-mono text-[36px] leading-10 text-ink md:text-[40px]">{balance ?? "..."}</div>
+        </div>
+      </div>
 
-      <Card>
-        <h2 className="text-lg font-semibold text-ink">Refund unused credits</h2>
+      {/* Sandbox strip */}
+      <div className="rounded-[10px] bg-paper-sunken px-4 py-3 text-sm leading-6 text-ink-2">
+        PayPal Sandbox. Use the test buyer account from the{" "}
+        <a href="/judges" className="font-medium text-blue underline underline-offset-2">
+          judge guide
+        </a>
+        . No real money moves.
+      </div>
+
+      {panel && (
+        <Panel kind={panel.kind} onRetry={panel.kind === "danger" ? () => setPanel(null) : undefined}>
+          {panel.text}
+        </Panel>
+      )}
+      {error && (
+        <p className="text-sm font-medium text-red-pen" role="alert">
+          {error}
+        </p>
+      )}
+      {loading && <p className="font-mono text-xs text-ink-3">Processing...</p>}
+
+      {/* Packs */}
+      <section className="space-y-4">
+        <div className="type-label">Choose a pack</div>
+        {!sdkUnavailable && (
+          <PayPalCheckout packages={PACKAGES} onStatus={onCheckoutStatus} onRedirect={buyRedirect} redirectDisabled={loading} />
+        )}
+        {sdkUnavailable && (
+          <div className="grid gap-6 md:grid-cols-3 md:gap-8">
+            {PACKAGES.map((p) => (
+              <Sheet key={p.id} className="flex flex-col">
+                <div className="type-label">{p.credits} credits</div>
+                <div className="mt-3 font-mono text-[32px] leading-9 text-ink">${p.amount}</div>
+                <div className="mt-1 font-mono text-xs text-ink-3">
+                  ${(parseFloat(p.amount) / p.credits).toFixed(2)} per credit
+                </div>
+                <div className="mt-auto pt-4">
+                  <Button onClick={() => buyRedirect(p.id)} disabled={loading} className="w-full">
+                    Buy with PayPal
+                  </Button>
+                </div>
+              </Sheet>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Refund desk */}
+      <Rule />
+
+      <section className="space-y-5">
+        <h2 className="type-h2 text-ink">Refund unused credits</h2>
         {summary && summary.refundableCredits > 0 ? (
           <>
-            <p className="mt-1 text-sm text-ink-muted">
-              Refundable: {summary.refundableCredits} credits{" "}
-              (up to ${summary.refundableAmount}). An AI agent reviews your reason; the server decides the amount.
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-[10px] border border-line bg-paper-sunken p-5">
+                <div className="type-label">Refundable credits</div>
+                <div className="mt-2 font-mono text-[28px] leading-8 text-ink [font-variant-numeric:tabular-nums]">
+                  {summary.refundableCredits}
+                </div>
+              </div>
+              <div className="rounded-[10px] border border-line bg-paper-sunken p-5">
+                <div className="type-label">Refundable amount</div>
+                <div className="mt-2 font-mono text-[28px] leading-8 text-ink [font-variant-numeric:tabular-nums]">
+                  ${summary.refundableAmount}
+                </div>
+              </div>
+            </div>
+            <p className="text-sm leading-6 text-ink-2">
+              An AI agent reviews your reason; the server decides the amount.
             </p>
-            <div className="mt-4 grid gap-4 md:grid-cols-[140px_1fr_auto] md:items-end">
-              <div className="space-y-1">
+            <Rule />
+            <div className="grid gap-4 md:grid-cols-[140px_1fr_auto] md:items-end">
+              <div className="space-y-1.5">
                 <Label htmlFor="refund-credits">Credits</Label>
                 <Input
                   id="refund-credits"
@@ -274,7 +333,7 @@ function CreditsInner() {
                   onChange={(e) => setRefundCredits(e.target.value)}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="refund-reason">Why the refund?</Label>
                 <Textarea
                   id="refund-reason"
@@ -288,37 +347,40 @@ function CreditsInner() {
                 Request refund
               </Button>
             </div>
-            {refundMsg && <div className="mt-4"><Panel kind={refundMsgKind}>{refundMsg}</Panel></div>}
+            {refundMsg && (
+              <div className="mt-1">
+                <Panel kind={refundMsgKind}>{refundMsg}</Panel>
+              </div>
+            )}
           </>
         ) : (
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="text-sm leading-6 text-ink-2">
             {summary ? "No refundable purchases yet. Buy credits and use a few first." : "Checking refundable purchases..."}
           </p>
         )}
+
         {summary && summary.requests.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-sm font-semibold text-ink">Refund requests</h3>
-            <div className="mt-2 divide-y divide-border">
+          <div className="space-y-2">
+            <h3 className="type-label">Refund requests</h3>
+            <ul>
               {summary.requests.map((r) => (
-                <div key={r.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-                  <Badge variant={r.status === "refunded" ? "success" : r.status === "failed" ? "danger" : "warning"}>
-                    {r.status}
-                  </Badge>
+                <li key={r.id} className="flex flex-wrap items-center gap-3 border-b border-line py-3 text-sm last:border-b-0">
+                  <Stamp tone={stampTone[r.status] ?? "amber"}>{r.status === "pending" ? "Pending" : r.status}</Stamp>
                   <span className="font-mono text-ink">
                     {r.credits} credits · ${Number(r.amount).toFixed(2)}
                   </span>
                   {r.ai_decision?.message && (
-                    <span className="text-ink-muted">{r.ai_decision.message}</span>
+                    <span className="flex-1 min-w-0">
+                      <MarginNote>{r.ai_decision.message}</MarginNote>
+                    </span>
                   )}
-                  <span className="ml-auto text-xs text-ink-faint">
-                    {new Date(r.created_at).toLocaleString()}
-                  </span>
-                </div>
+                  <span className="font-mono text-[11px] leading-4 text-ink-3">{new Date(r.created_at).toLocaleString()}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
-      </Card>
+      </section>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>

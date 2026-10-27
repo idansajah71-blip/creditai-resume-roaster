@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Highlight } from "@/components/ui/annotations";
 
 const DISMISS_KEY = "starter-banner-dismissed";
 
@@ -44,12 +45,12 @@ export default function StarterCreditsBanner() {
 
   return (
     <div
-      className="flex items-start justify-between gap-3 rounded-[10px] border border-success/30 bg-success-soft px-4 py-3 text-sm font-medium text-success"
+      className="flex items-start justify-between gap-3 rounded-[10px] border border-line bg-paper-sunken px-4 py-3 text-sm leading-6 text-ink-2"
       role="status"
     >
       <span>
-        You have {status.credits} free credits to try the analysis. Buy more any time on the{" "}
-        <Link href="/credits" className="underline underline-offset-2">
+        You have <Highlight>{status.credits}</Highlight> free credits to try the analysis. Buy more any time on the{" "}
+        <Link href="/credits" className="font-medium text-blue underline underline-offset-2">
           Credits page
         </Link>
         .
@@ -57,7 +58,7 @@ export default function StarterCreditsBanner() {
       <button
         type="button"
         onClick={dismiss}
-        className="shrink-0 rounded px-1 text-sm font-semibold text-success hover:opacity-80"
+        className="shrink-0 min-h-[44px] px-1 font-medium text-ink-3 hover:text-ink md:min-h-0 md:py-0"
         aria-label="Dismiss banner"
       >
         Dismiss

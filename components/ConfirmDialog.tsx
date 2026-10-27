@@ -56,19 +56,19 @@ export default function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
         aria-describedby="confirm-desc"
-        className="w-full max-w-[420px] rounded-[10px] border border-border bg-surface p-6 shadow-lg"
+        className="max-h-[85vh] w-full max-w-[420px] overflow-y-auto rounded-[10px] border border-line bg-sheet p-5 shadow-sheet md:p-6"
       >
-        <h2 id="confirm-title" className="text-lg font-semibold text-ink">
+        <h2 id="confirm-title" className="type-h3 text-ink">
           {title}
         </h2>
-        <p id="confirm-desc" className="mt-2 text-sm text-ink-muted">
+        <p id="confirm-desc" className="mt-2 text-sm leading-6 text-ink-2">
           {description}
         </p>
         <div className="mt-6 flex justify-end gap-2">

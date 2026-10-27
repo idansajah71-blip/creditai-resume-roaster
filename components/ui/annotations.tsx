@@ -47,7 +47,14 @@ export function MarginNote({
   );
 }
 
-type StampTone = "red" | "ink";
+type StampTone = "red" | "ink" | "green" | "amber";
+
+const toneClass: Record<StampTone, string> = {
+  red: "border-red-pen text-red-pen",
+  ink: "border-ink text-ink",
+  green: "border-green text-green",
+  amber: "border-amber text-amber",
+};
 
 export function Stamp({
   children,
@@ -58,10 +65,9 @@ export function Stamp({
   tone?: StampTone;
   className?: string;
 }) {
-  const border = tone === "ink" ? "border-ink text-ink" : "border-red-pen text-red-pen";
   return (
     <span
-      className={`inline-block border-2 rounded-[6px] px-2.5 py-1 uppercase font-mono text-[11px] leading-[14px] tracking-[0.08em] -rotate-3 ${border} ${className}`}
+      className={`inline-block border-2 rounded-[6px] px-2.5 py-1 uppercase font-mono text-[11px] leading-[14px] tracking-[0.08em] -rotate-3 ${toneClass[tone]} ${className}`}
     >
       {children}
     </span>

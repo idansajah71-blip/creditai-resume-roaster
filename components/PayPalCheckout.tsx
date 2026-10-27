@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { Card } from "@/components/ui/Card";
+import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { fetchWithTimeout, clientErrorMessage, PAYPAL_UNREACHABLE_MESSAGE } from "@/lib/fetch-timeout";
 
@@ -36,6 +36,25 @@ export type CheckoutPayload = {
   balance?: number;
   message?: string;
 };
+
+function PackSheet({
+  p,
+  children,
+}: {
+  p: PackageItem;
+  children: React.ReactNode;
+}) {
+  return (
+    <Sheet className="flex flex-col">
+      <div className="type-label">{p.credits} credits</div>
+      <div className="mt-3 font-mono text-[32px] leading-9 text-ink">${p.amount}</div>
+      <div className="mt-1 font-mono text-xs text-ink-3">
+        ${(parseFloat(p.amount) / p.credits).toFixed(2)} per credit
+      </div>
+      <div className="mt-auto pt-4">{children}</div>
+    </Sheet>
+  );
+}
 
 export default function PayPalCheckout({
   packages,
@@ -129,15 +148,13 @@ export default function PayPalCheckout({
   if (!clientId) {
     // Fallback: old redirect flow.
     return (
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3 md:gap-8">
         {packages.map((p) => (
-          <Card key={p.id}>
-            <div className="text-2xl font-bold text-ink">{p.credits} credits</div>
-            <div className="text-ink-muted">${p.amount} USD</div>
-            <Button onClick={() => onRedirect(p.id)} disabled={redirectDisabled} className="mt-4 w-full">
+          <PackSheet key={`pack-${p.id}`} p={p}>
+            <Button onClick={() => onRedirect(p.id)} disabled={redirectDisabled} className="w-full">
               Buy with PayPal
             </Button>
-          </Card>
+          </PackSheet>
         ))}
       </div>
     );
@@ -150,27 +167,29 @@ export default function PayPalCheckout({
         onLoad={() => setSdkReady(true)}
         onError={() => setSdkFailed(true)}
       />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3 md:gap-8">
         {packages.map((p) => (
-          <Card key={p.id}>
-            <div className="text-2xl font-bold text-ink">{p.credits} credits</div>
-            <div className="text-ink-muted">${p.amount} USD</div>
+          <PackSheet key={`pack-${p.id}`} p={p}>
             {sdkFailed ? (
-              <Button onClick={() => onRedirect(p.id)} disabled={redirectDisabled} className="mt-4 w-full">
+              <Button onClick={() => onRedirect(p.id)} disabled={redirectDisabled} className="w-full">
                 Buy with PayPal
               </Button>
             ) : (
-              <div className="relative mt-4 min-h-[48px]">
-                {!useSdk && <p className="text-sm text-ink-muted">Loading PayPal...</p>}
+              <div className="relative flex min-h-[48px] items-center">
+                {!useSdk && (
+                  <p className="font-mono text-xs text-ink-3" aria-live="polite">
+                    Loading PayPal...
+                  </p>
+                )}
                 <div ref={(el) => { containers.current[p.id] = el; }} />
                 {busy === p.id && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-muted">
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-sheet/80 font-mono text-xs text-ink-3">
                     Processing...
                   </div>
                 )}
               </div>
             )}
-          </Card>
+          </PackSheet>
         ))}
       </div>
     </>

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toast } from "@/components/ui/Toast";
+import HistoryRows, { type JobRow } from "@/components/HistoryRows";
 import { Highlight, RedUnderline, MarginNote, Stamp, Rule } from "@/components/ui/annotations";
 import { Icon } from "@/components/icons";
 import StarterCreditsBanner from "@/components/StarterCreditsBanner";
@@ -31,33 +32,12 @@ type AnalysisResult = {
   language?: "en" | "id";
 };
 
-type JobRow = { id: string; status: string; result: string | null; created_at: string };
-
 const PROOF_STEPS = ["Reading your resume", "Matching requirements", "Writing the roast", "Rewriting"];
 
 function bandStamp(score: number): { label: string; tone: "red" | "ink" } {
   if (score >= 75) return { label: "Strong match", tone: "ink" };
   if (score >= 50) return { label: "Partial match", tone: "ink" };
   return { label: "Weak match", tone: "red" };
-}
-
-function scoreOf(row: JobRow): number | null {
-  if (!row.result) return null;
-  try {
-    const parsed = JSON.parse(row.result) as { matchScore?: number };
-    return typeof parsed.matchScore === "number" ? parsed.matchScore : null;
-  } catch {
-    return null;
-  }
-}
-
-function relTime(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }
 
 /* Wrap each unverified detail occurrence in the rewritten resume with a
@@ -95,29 +75,6 @@ function markUnverified(text: string, details: string[]): React.ReactNode[] {
   } catch {
     return [text];
   }
-}
-
-function HistoryRows({ rows }: { rows: JobRow[] }) {
-  return (
-    <Sheet className="p-5">
-      <h2 className="type-h3 text-ink">History</h2>
-      <ul className="mt-3">
-        {rows.slice(0, 5).map((j) => {
-          const score = scoreOf(j);
-          return (
-            <li key={j.id} className="flex items-center gap-2 border-b border-line py-2 text-sm last:border-b-0">
-              <span className="font-mono text-xs text-ink-3">{j.id.slice(0, 8)}</span>
-              <Badge variant={j.status === "failed" ? "missing" : "neutral"}>{j.status}</Badge>
-              <span className="ml-auto font-mono text-xs text-ink">
-                {score !== null ? `${score}/100` : "-"}
-              </span>
-              <span className="font-mono text-[11px] leading-4 text-ink-3">{relTime(j.created_at)}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </Sheet>
-  );
 }
 
 function LoadingPanel({ step, text }: { step: number; text: string }) {
