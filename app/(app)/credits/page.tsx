@@ -389,7 +389,7 @@ function CreditsInner() {
 
 export default function CreditsPage() {
   return (
-    <Suspense fallback={<p className="text-ink-muted">Loading...</p>}>
+    <Suspense fallback={<p className="text-ink-2">Loading...</p>}>
       <CreditsInner />
     </Suspense>
   );

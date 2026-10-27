@@ -1,4 +1,4 @@
-type Variant = "neutral" | "success" | "warning" | "danger" | "accent" | "met" | "partial" | "missing";
+type Variant = "neutral" | "success" | "warning" | "danger" | "met" | "partial" | "missing";
 
 /* Small bordered uppercase mono labels, not pills with heavy fills. */
 const styles: Record<Exclude<Variant, "met" | "partial" | "missing">, string> = {
@@ -6,7 +6,6 @@ const styles: Record<Exclude<Variant, "met" | "partial" | "missing">, string> = 
   success: "border-green/40 bg-green-soft text-green",
   warning: "border-amber/40 bg-amber-soft text-amber",
   danger: "border-red-pen/40 bg-red-soft text-red-pen",
-  accent: "border-blue/30 bg-accent-soft text-accent",
 };
 
 export function Badge({

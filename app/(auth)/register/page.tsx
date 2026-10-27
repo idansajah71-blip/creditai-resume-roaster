@@ -50,7 +50,7 @@ export default function RegisterPage() {
         }
       >
         <Sheet className="mx-auto max-w-[480px] p-6 md:p-8">
-          <h1 className="font-display text-[34px] leading-10 text-ink">Create account</h1>
+          <h1 className="type-display text-ink">Create account</h1>
           <p className="mt-1 text-sm text-ink-3">Three free starter credits to try the review.</p>
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div className="space-y-1.5">

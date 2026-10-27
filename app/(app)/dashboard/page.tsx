@@ -41,7 +41,7 @@ export default async function DashboardPage() {
     <div className="space-y-10">
       <div className="space-y-2">
         <div className="type-label">Overview</div>
-        <h1 className="font-display text-[30px] leading-9 text-ink md:text-[36px] md:leading-10">Welcome back.</h1>
+        <h1 className="type-display text-ink">Welcome back.</h1>
       </div>
 
       <StarterCreditsBanner />

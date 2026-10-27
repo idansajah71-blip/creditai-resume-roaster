@@ -33,25 +33,6 @@
 
   --color-blue: #25418f; /* links and focus ring only, never buttons */
 
-  /* Legacy aliases: older pages still reference these names; each maps to
-     the closest Red Pen token. They may be removed once all usages migrate. */
-  --color-background: var(--color-paper);
-  --color-surface: var(--color-sheet);
-  --color-surface-muted: var(--color-paper-sunken);
-  --color-border: var(--color-line);
-  --color-border-strong: var(--color-line-strong);
-  --color-ink-muted: var(--color-ink-2);
-  --color-ink-faint: var(--color-ink-3);
-  --color-accent: var(--color-blue);
-  --color-accent-hover: #1d3575;
-  --color-accent-soft: #e7ecf6;
-  --color-success: var(--color-green);
-  --color-success-soft: var(--color-green-soft);
-  --color-warning: var(--color-amber);
-  --color-warning-soft: var(--color-amber-soft);
-  --color-danger: var(--color-red-pen);
-  --color-danger-soft: var(--color-red-soft);
-
   /* Type */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;

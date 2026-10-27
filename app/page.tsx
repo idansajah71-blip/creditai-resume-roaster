@@ -27,7 +27,7 @@ function LedgerRow({ kind, amount, note, tone }: { kind: string; amount: string;
 function Specimen() {
   return (
     <div className="relative mx-auto w-full max-w-[460px] -rotate-1">
-      <div className="rounded-[10px] border border-line bg-sheet p-5 shadow-[0_1px_0_rgba(23,20,15,0.04),0_1px_2px_rgba(23,20,15,0.06),0_24px_48px_-24px_rgba(23,20,15,0.28)] md:p-7">
+      <div className="rounded-[10px] border border-line bg-sheet p-5 shadow-[0_1px_0_rgba(23,20,15,0.04),0_16px_36px_-20px_rgba(23,20,15,0.2)] md:p-7">
         {/* Verdict stamp pinned at the corner */}
         <div className="absolute -right-2 -top-3 md:-right-3">
           <Stamp tone="ink">Match 72</Stamp>

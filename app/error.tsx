@@ -20,7 +20,7 @@ export default function ErrorPage({
         <div className="inline-block">
           <Stamp tone="red">Error</Stamp>
         </div>
-        <h1 className="mt-6 font-display text-[34px] leading-10 text-ink md:text-[40px] md:leading-11">
+        <h1 className="mt-6 type-display text-ink">
           Something tore the page.
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-2">

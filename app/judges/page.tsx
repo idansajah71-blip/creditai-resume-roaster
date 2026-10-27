@@ -182,7 +182,7 @@ export default function JudgesPage() {
 
         {/* Editor's margin note: what a grader should verify */}
         <section className="rounded-[10px] border border-l-2 border-l-red-pen border-line bg-paper-sunken p-6">
-          <h2 className="type-label text-[12px] normal-case text-ink">What to look for</h2>
+          <h2 className="type-h3 text-ink">What to look for</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-ink-2">
             <li>
               <strong>Atomic credits:</strong> the credit is reserved, then consumed or refunded. A
