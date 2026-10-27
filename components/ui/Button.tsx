@@ -30,6 +30,7 @@ export function Button({
     <button
       ref={ref}
       className={`btn ${variantClass} ${sizeClass} ${className}`}
+      aria-busy={loading || undefined}
       disabled={loading || props.disabled}
       {...props}
     >

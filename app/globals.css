@@ -3,44 +3,82 @@
 @source "../components";
 @source "../lib";
 
+/* ============================================================
+   THE RED PEN - design tokens
+   Warm paper, ink, a red pen for criticism, a yellow highlighter
+   for evidence. Light theme only.
+   ============================================================ */
 @theme {
-  --color-background: #F7F6F2;
-  --color-surface: #FFFFFF;
-  --color-surface-muted: #F0EEE8;
-  --color-border: #E4E1D8;
-  --color-border-strong: #CFCABD;
-  --color-ink: #14161A;
-  --color-ink-muted: #565B63;
-  --color-ink-faint: #666B73;
-  --color-accent: #1F4FD8;
-  --color-accent-hover: #1A42B5;
-  --color-accent-soft: #E8EEFC;
-  --color-success: #1B6B45;
-  --color-success-soft: #E3F3EA;
-  --color-warning: #8A5A00;
-  --color-warning-soft: #FFF1D1;
-  --color-danger: #A8281B;
-  --color-danger-soft: #FCE9E6;
+  /* Paper, ink, pens */
+  --color-paper: #faf7f0;
+  --color-paper-sunken: #f1ecdf;
+  --color-sheet: #fffefa;
+  --color-line: #e2dac8;
+  --color-line-strong: #cbbfa5;
+  --color-ink: #17140f;
+  --color-ink-2: #4a453c;
+  --color-ink-3: #6b655a; /* AA on paper: 5.40:1, 4.90:1 on paper-sunken */
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-red-pen: #c2331f;
+  --color-red-soft: #f9e3de;
 
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-pill: 999px;
+  --color-highlighter: #ffe27a;
+  --color-highlighter-soft: #fff3c4;
 
-  --shadow-card: 0 1px 2px rgba(20,22,26,0.04);
-  --shadow-card-hover: 0 6px 20px rgba(20,22,26,0.07);
+  --color-green: #2f6b4f;
+  --color-green-soft: #e1efe6;
+
+  --color-amber: #8a5a00;
+  --color-amber-soft: #fcebc8;
+
+  --color-blue: #25418f; /* links and focus ring only, never buttons */
+
+  /* Legacy aliases: older pages still reference these names; each maps to
+     the closest Red Pen token. They may be removed once all usages migrate. */
+  --color-background: var(--color-paper);
+  --color-surface: var(--color-sheet);
+  --color-surface-muted: var(--color-paper-sunken);
+  --color-border: var(--color-line);
+  --color-border-strong: var(--color-line-strong);
+  --color-ink-muted: var(--color-ink-2);
+  --color-ink-faint: var(--color-ink-3);
+  --color-accent: var(--color-blue);
+  --color-accent-hover: #1d3575;
+  --color-accent-soft: #e7ecf6;
+  --color-success: var(--color-green);
+  --color-success-soft: var(--color-green-soft);
+  --color-warning: var(--color-amber);
+  --color-warning-soft: var(--color-amber-soft);
+  --color-danger: var(--color-red-pen);
+  --color-danger-soft: var(--color-red-soft);
+
+  /* Type */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+
+  /* Shape */
+  --radius-sm: 6px; /* inputs, buttons */
+  --radius-md: 10px; /* sheets */
+
+  /* Page rhythm */
+  --container-page: 1140px;
+
+  /* Depth: hairline lift; the featured sheet may use --shadow-sheet */
+  --shadow-sheet: 0 1px 0 rgba(23, 20, 15, 0.04), 0 8px 24px -12px rgba(23, 20, 15, 0.12);
 }
 
 :root {
   color-scheme: light;
 }
 
-html, body {
-  background-color: var(--color-background);
+html,
+body {
+  background-color: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 26px;
 }
 
 body {
@@ -53,68 +91,163 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-blue);
   outline-offset: 2px;
 }
 
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
+/* ---------- Typography scale (editorial) ---------- */
+.type-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-size: 44px;
+  line-height: 48px;
+}
+@media (min-width: 768px) {
+  .type-display {
+    font-size: 64px;
+    line-height: 66px;
+  }
 }
 
+.type-h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-size: 36px;
+  line-height: 42px;
+}
+
+.type-h3 {
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.type-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-3);
+}
+
+/* Editorial numerals: scores, money, ids */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Sheets (cards) ---------- */
+.card {
+  background: var(--color-sheet);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+
+.sheet-hero {
+  box-shadow: var(--shadow-sheet);
+}
+
+/* ---------- Buttons (ink primary, no blue buttons) ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: var(--radius-sm);
   font-weight: 500;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
   cursor: pointer;
 }
+@media (min-width: 768px) {
+  .btn {
+    min-height: 40px;
+  }
+}
 
 .btn-primary {
-  background: var(--color-accent);
-  color: #fff;
-  border: 1px solid var(--color-accent);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border: 1px solid var(--color-ink);
 }
-.btn-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.btn-primary:hover {
+  background: #2e2a22;
+  border-color: #2e2a22;
+}
 
 .btn-secondary {
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-ink);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-ink-2);
 }
-.btn-secondary:hover { background: var(--color-surface-muted); }
+.btn-secondary:hover {
+  background: var(--color-paper-sunken);
+}
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-ink-muted);
+  color: var(--color-ink-2);
   border: 1px solid transparent;
 }
-.btn-ghost:hover { background: var(--color-surface-muted); color: var(--color-ink); }
-
-.btn-danger {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger-soft);
+.btn-ghost:hover {
+  background: var(--color-paper-sunken);
+  color: var(--color-ink);
 }
 
+.btn-danger {
+  background: transparent;
+  color: var(--color-red-pen);
+  border: 1px solid var(--color-red-pen);
+}
+.btn-danger:hover {
+  background: var(--color-red-soft);
+}
+
+/* ---------- Spinner ---------- */
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255,255,255,0.4);
-  border-top-color: #fff;
+  border: 2px solid rgba(23, 20, 15, 0.25);
+  border-top-color: var(--color-ink);
   border-radius: 50%;
   animation: spin 600ms linear infinite;
 }
-.btn-secondary .spinner, .btn-ghost .spinner { border-color: rgba(20,22,26,0.2); border-top-color: var(--color-ink); }
+.btn-primary .spinner {
+  border-color: rgba(250, 247, 240, 0.4);
+  border-top-color: var(--color-paper);
+}
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
+/* ---------- Signature: highlighter reveal ---------- */
+@keyframes hl-reveal {
+  from {
+    background-size: 0% 58%;
+  }
+  to {
+    background-size: 100% 58%;
+  }
+}
+.hl-reveal {
+  animation: hl-reveal 600ms ease-out both;
+}
+
+/* ---------- Signature: hand-drawn red underline (squiggle) ---------- */
+.red-underline {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 9' preserveAspectRatio='none'%3E%3Cpath d='M1 5.5 C 6 2.5, 12 7.5, 18 5 C 24 2.5, 30 7.5, 36 5 C 42 2.8, 48 7, 54 4.8 C 58 3.5, 61 5.2, 63 4.6' fill='none' stroke='%23C2331F' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  background-size: auto 7px;
+  padding-bottom: 8px;
+}
+
+/* ---------- Motion safety ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -124,8 +257,8 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-@media (max-width: 640px) {
-  h1 { font-size: 32px; line-height: 38px; }
+  .hl-reveal,
+  .red-underline {
+    animation: none !important;
+  }
 }

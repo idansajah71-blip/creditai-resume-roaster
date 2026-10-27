@@ -1,24 +1,29 @@
+type Variant = "neutral" | "success" | "warning" | "danger" | "accent" | "met" | "partial" | "missing";
+
+/* Small bordered uppercase mono labels, not pills with heavy fills. */
+const styles: Record<Exclude<Variant, "met" | "partial" | "missing">, string> = {
+  neutral: "border-line-strong bg-sheet text-ink-2",
+  success: "border-green/40 bg-green-soft text-green",
+  warning: "border-amber/40 bg-amber-soft text-amber",
+  danger: "border-red-pen/40 bg-red-soft text-red-pen",
+  accent: "border-blue/30 bg-accent-soft text-accent",
+};
+
 export function Badge({
   variant = "neutral",
   children,
   className = "",
 }: {
-  variant?: "neutral" | "success" | "warning" | "danger" | "accent";
+  variant?: Variant;
   children: React.ReactNode;
   className?: string;
 }) {
-  const cls =
-    variant === "success"
-      ? "bg-success-soft text-success"
-      : variant === "warning"
-        ? "bg-warning-soft text-warning"
-        : variant === "danger"
-          ? "bg-danger-soft text-danger"
-          : variant === "accent"
-            ? "bg-accent-soft text-accent"
-            : "bg-surface-muted text-ink-muted";
+  const key =
+    variant === "met" ? "success" : variant === "partial" ? "warning" : variant === "missing" ? "danger" : variant;
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls} ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-[6px] border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase leading-[16px] tracking-[0.08em] ${styles[key]} ${className}`}
+    >
       {children}
     </span>
   );

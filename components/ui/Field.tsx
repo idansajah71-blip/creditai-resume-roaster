@@ -12,11 +12,19 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      {label && <label className="text-sm font-medium text-ink">{label}</label>}
+    <div className="space-y-1.5">
+      {label && (
+        <label className="block text-[12px] font-semibold uppercase leading-4 tracking-[0.08em] text-ink-3">
+          {label}
+        </label>
+      )}
       {children}
-      {hint && !error && <p className="text-xs text-ink-muted">{hint}</p>}
-      {error && <p className="text-xs text-danger" role="alert">{error}</p>}
+      {hint && !error && <p className="text-xs leading-5 text-ink-3">{hint}</p>}
+      {error && (
+        <p className="text-xs font-medium leading-5 text-red-pen" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

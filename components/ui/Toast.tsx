@@ -17,7 +17,7 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-4 right-4 z-50 rounded-[10px] border border-border bg-surface px-4 py-3 text-sm shadow-card"
+      className="fixed bottom-4 left-4 right-4 z-50 rounded-[10px] border border-line bg-sheet px-4 py-3 text-sm leading-6 text-ink shadow-sheet md:bottom-6 md:left-auto md:w-80 md:right-6"
     >
       {message}
     </div>

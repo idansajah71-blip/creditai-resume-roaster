@@ -11,10 +11,14 @@ export function CopyField({ value }: { value: string }) {
   }
   return (
     <div className="flex items-center gap-2">
-      <code className="flex-1 truncate rounded-[10px] border border-border bg-surface-muted px-3 py-2 font-mono text-sm">
+      <code className="flex-1 truncate rounded-[6px] border border-line bg-paper-sunken px-3 py-2.5 font-mono text-sm text-ink">
         {value}
       </code>
-      <button onClick={copy} className="btn btn-secondary px-3 py-2 text-sm">
+      <button
+        onClick={copy}
+        aria-live="polite"
+        className={`btn btn-secondary min-w-[88px] px-3 text-sm ${copied ? "text-green" : ""}`}
+      >
         {copied ? "Copied" : "Copy"}
       </button>
     </div>

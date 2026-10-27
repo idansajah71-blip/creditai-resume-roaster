@@ -1,13 +1,7 @@
 import React from "react";
+import { Sheet } from "@/components/ui/Sheet";
 
-export function Card({
-  className = "",
-  children,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={`card p-5 ${className}`} {...props}>
-      {children}
-    </div>
-  );
+/* Compatibility alias: pages still import Card and receive the sheet look. */
+export function Card(props: React.HTMLAttributes<HTMLDivElement>) {
+  return <Sheet {...props} />;
 }
