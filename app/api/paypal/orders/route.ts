@@ -48,6 +48,21 @@ export async function POST(request: Request) {
     });
   }
 
+  // Per-user daily order cap (only for new orders; retries above still resolve)
+  const maxOrders = Number(process.env.PAYPAL_MAX_ORDERS_PER_DAY || 10);
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: orderCount } = await service
+    .from("paypal_orders")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", since24h);
+  if ((orderCount ?? 0) >= maxOrders) {
+    return NextResponse.json(
+      { success: false, message: "Daily purchase limit reached. Try again tomorrow." },
+      { status: 429 },
+    );
+  }
+
   let paypalOrder;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   try {

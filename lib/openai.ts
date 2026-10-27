@@ -39,6 +39,7 @@ Include:
         ],
         response_format: { type: "json_schema", json_schema: analysisJsonSchema },
         temperature: 0.4,
+        max_tokens: 2000,
       }),
       signal: controller.signal,
     });
@@ -59,6 +60,7 @@ Include:
           ],
           response_format: { type: "json_object" },
           temperature: 0.4,
+          max_tokens: 2000,
         }),
         signal: controller.signal,
       });

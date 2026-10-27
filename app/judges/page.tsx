@@ -1,15 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import PublicShell from "@/components/PublicShell";
 import { CopyField } from "@/components/ui/CopyField";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
-const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@creditai.local";
-const demoPass = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "DemoPass123!";
 const buyerEmail = process.env.NEXT_PUBLIC_PAYPAL_BUYER_EMAIL || "sb-buyer@example.com";
 const buyerPass = process.env.NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD || "placeholder";
 
 export default function JudgesPage() {
+  const router = useRouter();
+
+  async function startDemo() {
+    router.push("/login?next=%2Fdashboard");
+  }
+
   return (
     <PublicShell>
       <div className="space-y-8">
@@ -22,16 +28,12 @@ export default function JudgesPage() {
 
         <Card>
           <h2 className="text-lg font-semibold text-ink">Demo app account</h2>
-          <p className="mt-1 text-sm text-ink-muted">Starts with 5 free credits.</p>
-          <div className="mt-4 space-y-3">
-            <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">Email</div>
-              <CopyField value={demoEmail} />
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">Password</div>
-              <CopyField value={demoPass} />
-            </div>
+          <p className="mt-1 text-sm text-ink-muted">
+            Each judge gets a fresh, ephemeral account with 5 free credits. Accounts expire after 24
+            hours. No shared password is required.
+          </p>
+          <div className="mt-4">
+            <Button onClick={startDemo}>Start a fresh demo session</Button>
           </div>
         </Card>
 

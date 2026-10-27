@@ -43,6 +43,7 @@ function makeService() {
         maybeSingle: async () => ({ data: null, error: null }),
         gte: async () => ({ count: 0, error: null }),
       }),
+      gte: async () => ({ count: 0, error: null }),
     }),
     insert: () => ({ select: () => ({ single: async () => ({ data: { id: "job1" }, error: null }) }) }),
     update: () => ({ eq: async () => ({ error: null }) }),

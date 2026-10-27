@@ -78,23 +78,40 @@ function LoginForm() {
             type="button"
             variant="secondary"
             className="w-full"
+            loading={loading}
             onClick={async () => {
               setLoading(true);
-              const supabase = createClient();
-              const e = process.env.NEXT_PUBLIC_DEMO_EMAIL || "demo@creditai.local";
-              const p = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "DemoPass123!";
-              const { error } = await supabase.auth.signInWithPassword({ email: e, password: p });
-              setLoading(false);
-              if (error) setError(error.message);
-              else {
-                router.push(next);
-                router.refresh();
+              setError(null);
+              try {
+                const res = await fetch("/api/demo/session", { method: "POST" });
+                const json = await res.json();
+                if (!json.success) {
+                  setError(json.message || "Demo session unavailable.");
+                  setLoading(false);
+                  return;
+                }
+                const supabase = createClient();
+                const { error } = await supabase.auth.signInWithPassword({
+                  email: json.data.email,
+                  password: json.data.password,
+                });
+                setLoading(false);
+                if (error) setError(error.message);
+                else {
+                  router.push(next);
+                  router.refresh();
+                }
+              } catch {
+                setLoading(false);
+                setError("Demo session unavailable.");
               }
             }}
           >
-            Log in as demo judge
+            Start a fresh demo session
           </Button>
-          <p className="mt-2 text-xs text-ink-muted">Pre-funded demo account for reviewers.</p>
+          <p className="mt-2 text-xs text-ink-muted">
+            Creates a new account with 5 free credits. Expires after 24 hours.
+          </p>
           <p className="mt-4 text-sm text-ink-muted">
             No account?{" "}
             <Link href="/register" className="text-accent hover:underline">

@@ -32,7 +32,10 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimitDb: async () => true }));
 
 function makeService() {
   mockService.from.mockImplementation(() => ({
-    select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), gte: async () => ({ count: 0, error: null }) }) }),
+    select: () => ({
+      eq: () => ({ maybeSingle: async () => ({ data: null, error: null }), gte: async () => ({ count: 0, error: null }) }),
+      gte: async () => ({ count: 0, error: null }),
+    }),
     insert: () => ({ select: () => ({ single: async () => ({ data: { id: "job1" }, error: null }) }) }),
     update: () => ({ eq: async () => ({ error: null }) }),
   }));

@@ -7,7 +7,23 @@
 4. Deploy.
 
 ## Database
-- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql` in Supabase SQL editor.
+- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql` in Supabase SQL editor (in order).
+
+## Cost protection (OpenAI)
+- In the OpenAI dashboard, set a hard monthly spend limit on your project. This caps real cost even if env limits are misconfigured.
+- Tune `AI_DAILY_LIMIT_PER_USER`, `AI_GLOBAL_DAILY_LIMIT`, `PAYPAL_MAX_ORDERS_PER_DAY`, `DEMO_SESSIONS_DAILY_LIMIT` in env.
+
+## Ephemeral demo sessions
+- `POST /api/demo/session` creates a fresh demo user (email `demo-<random>@creditai.local`), grants 5 credits, and is limited per IP (3/hour) and globally (`DEMO_SESSIONS_DAILY_LIMIT`/day).
+- Demo users and `demo_sessions` rows older than 24h are removed by the SQL function `public.cleanup_demo_data()`.
+- Schedule cleanup with Supabase pg_cron (Database > Extensions > enable `pg_cron`, then):
+  ```sql
+  select cron.schedule(
+    'cleanup-demo',
+    '15 * * * *',
+    $$select public.cleanup_demo_data();$$
+  );
+  ```
 
 ## PayPal Sandbox
 - Create Sandbox app, set webhook URL to `https://<domain>/api/paypal/webhook`.

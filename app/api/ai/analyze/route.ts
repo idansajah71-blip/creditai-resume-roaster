@@ -38,6 +38,29 @@ export async function POST(request: Request) {
 
   const service = createServiceClient();
 
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  // Per-user daily cap
+  const userLimit = Number(process.env.AI_DAILY_LIMIT_PER_USER || 20);
+  const { count: userCount } = await service
+    .from("ai_jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", since24h);
+  if ((userCount ?? 0) >= userLimit) {
+    return NextResponse.json({ success: false, message: "Daily analysis limit reached." }, { status: 429 });
+  }
+
+  // Global daily cap
+  const globalLimit = Number(process.env.AI_GLOBAL_DAILY_LIMIT || 500);
+  const { count: globalCount } = await service
+    .from("ai_jobs")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since24h);
+  if ((globalCount ?? 0) >= globalLimit) {
+    return NextResponse.json({ success: false, message: "Demo capacity reached for today." }, { status: 503 });
+  }
+
   if (!(await checkRateLimitDb(service, user.id, 5, 60))) {
     return NextResponse.json({ success: false, message: "rate limited" }, { status: 429 });
   }
