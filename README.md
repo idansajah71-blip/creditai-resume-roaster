@@ -1,77 +1,118 @@
 # CreditAI Resume Roaster
 
-AI-powered resume analysis and rewriting with a credit-based billing flow. Paste a resume and a job description to get a match score, strengths, weaknesses, recommendations, and a rewritten resume. Purchase credits via PayPal Sandbox.
+CreditAI is a resume tool that proves its claims: it analyzes your resume against a real job description with real OpenAI inference, shows a before/after match estimate, and diffs the rewritten resume against your original to flag every fact the AI added. Billing is atomic credit-based, tested end to end against PayPal Sandbox (orders, captures, partial refunds, verified webhooks).
+
+## Problem and audience
+
+- Job seekers preparing for online hiring processes mostly endure time-boxed, evidence-based screens: recruiters compare candidates against a concrete job description, not vibes. Generic AI resume tools reply with subjective advice ("add more metrics") and no receipts; worse, auto-rewrites commonly invent companies, years, or achievements. The same tooling gap applies to Indonesian campus hiring programs (the project's first users were students preparing recruitment tests and applications in both English and Indonesian).
+- Audience: entry-level and early-career developers and analysts (Indonesian or English) applying through online job boards, cheap hiring assessments, or campus recruitment programs.
+- Specific pain this solves: unverifiable AI advice, fabricated rewrites, and opaque credit systems. CreditAI shows requirement-by-requirement evidence, flags unverified details deterministically, meters analysis with atomic credits, and supports partial refunds of unused credits.
 
 ## Live demo
+
 Placeholder: https://your-deployment.vercel.app
+Company/logistics demo guide: https://your-deployment.vercel.app/judges
+
+## Screenshots
+
+Placeholders (add real captures):
+- Landing page
+- Analysis result (score card, before/after estimate, fabrication check, requirement matches)
+- Credits page (inline PayPal Sandbox buttons)
+- Transactions page (ledger with refund compensation entries)
+- /judges (system status card + 5-step quick start)
+- Refund panel (AI decision message with guardrails)
 
 ## Features
-- Real OpenAI inference with structured JSON output.
+
+- Real OpenAI inference with structured JSON output (no mock data in production paths).
 - Before/after match estimate ("AI estimate, not a guarantee") included in the same credit.
-- Deterministic fabrication guard: the rewrite is checked against your original resume; flagged details are shown for verification.
-- Indonesian/English detection with answers in the resume's language.
-- Atomic credit reservation/finalization/refund.
-- PayPal Sandbox payments with webhook verification.
-- Idempotent orders, captures, grants, webhook events.
-- Privacy by default: resume text is not stored unless you opt in (checkbox on /analyze); character-count-only history otherwise; user-triggered one-click deletion of analysis data on the dashboard; public /privacy notice.
-- User-specific analysis and transaction history.
-- PDF upload for resumes.
-
-## Claims and evaluation
-
-See `docs/EVALUATION.md` and `npm run eval` (optional, costs real API money, not run in CI):
-average unverified details and average rewritten-score delta across 5 fixtures.
+- Deterministic fabrication guard: the rewrite is diffed against your original resume; flagged details are listed with chips for verification. One automatic stricter rewrite retry if too many details are flagged.
+- Indonesian/English detection; answers follow the resume's language.
+- Atomic credit reservation/consume/refund; per-user and global daily caps; stale reservation release.
+- PayPal Sandbox payments: inline SDK buttons with a redirect fallback, server-side prices only, idempotent orders and captures.
+- Partial refunds of unused credits through the PayPal Refunds API with ledger compensation; AI refund agent inside deterministic guardrails.
+- Verified webhooks (PAYMENT.CAPTURE.COMPLETED and PAYMENT.CAPTURE.REFUNDED) with ledger-level deduplication.
+- Privacy by default: resume text is not stored unless you opt in; otherwise only character counts are stored; one-click deletion of analysis data; scheduled purge of stale inputs (30 days); public /privacy notice.
+- User-specific analysis history and full transaction ledger; PDF upload for resumes.
+- Public system status endpoint (/api/health) and judge quick-start page (/judges).
 
 ## Architecture
+
 ```mermaid
 flowchart LR
-  User --> Next[Next.js App Router]
-  Next --> Supabase[Supabase Auth + Postgres]
-  Next --> OpenAI[OpenAI API]
-  Next --> PayPal[PayPal Sandbox API]
+  B["Browser (RSC UI + client islands)"]
+  N["Next.js App Router<br/>(route handlers, server components)"]
+  S["Supabase<br/>Auth + Postgres RLS"]
+  O["OpenAI API<br/>(analysis, scoring, refund agent)"]
+  P["PayPal Sandbox API<br/>(OAuth, orders, capture, refunds)"]
+  W["POST /api/paypal/webhook"]
+
+  B -- "cookies (auth)" --> N
+  N -- "RLS queries, SECURITY DEFINER RPCs" --> S
+  N -- "Chat Completions (JSON schema)" --> O
+  N -- "create/capture/refund, verify-webhook-signature" --> P
+  P -- "PAYMENT.CAPTURE.<br/>COMPLETED / REFUNDED" --> W
+  W -- "signature verify (API call)" --> P
+  W -- "grant/ledger (idempotent)" --> S
+
 ```
 
+## How PayPal is used
+
+Server-side endpoints (all called only from route handlers; docs at developer.paypal.com/docs/api/overview/):
+
+- `POST /v1/oauth2/token` - client-credentials access token. Docs: developer.paypal.com/docs/api/oauth2/
+- `POST /v2/checkout/orders` - order creation with server-side prices and `PayPal-Request-Id` (idempotency). Docs: developer.paypal.com/docs/api/orders/v2/
+- `POST /v2/checkout/orders/{id}/capture` - capture after buyer approval; ambiguous failures are resolved by re-querying via the Orders get endpoint (`ORDER_ALREADY_CAPTURED`).
+- `GET /v2/checkout/orders/{id}` - recovery lookup for captures.
+- `POST /v2/payments/captures/{id}/refund` - partial refund of unused credits with `PayPal-Request-Id` and `note_to_payer`. Docs: developer.paypal.com/docs/payments/capture-refunds/
+- `POST /v1/notifications/verify-webhook-signature` - webhook authenticity check before processing. Docs: developer.paypal.com/docs/webhooks/
+
+Client-side: PayPal JS SDK (`https://www.paypal.com/sdk/js?client-id=...&currency=USD&intent=capture`) rendered as inline buttons on /credits, with the classic redirect flow as fallback. Buyer credentials on /judges are Sandbox-only personal accounts; no real money moves.
+
+Prices: 10 credits $1.00, 50 credits $4.00, 100 credits $7.00. The client only displays package ids; the server recomputes amounts. Refunds are per credit (`amount / credits`, integer cents), allocated to the newest order first.
+
+Webhooks handled: `PAYMENT.CAPTURE.COMPLETED` (credit grant, idempotent by capture id + event id) and `PAYMENT.CAPTURE.REFUNDED` (ledger and counters, idempotent by refund id; app-initiated refunds skip re-collection via `refund_requests.paypal_refund_id`).
+
+## How AI is used
+
+- Analysis (model configurable via `OPENAI_MODEL`, default `gpt-4o-mini`): one structured Chat Completions call with a strict JSON schema (`lib/ai-schema.ts`), validated with Zod. Prompt includes requirement matches with evidence, 3 strengths, 5 weaknesses, missing keywords, recommendations, and a rewritten resume whose facts must come from the original.
+- Before/after estimate: a cheap second call (`scoreResume`) scores the rewritten resume with the same rubric; failure omits the delta silently at no user cost.
+- Fabrication guard (`lib/fabrication-guard.ts`): deterministic extraction of numbers with units, percentages, money, years, and capitalized multi-word names from the rewrite, matched against the original resume (normalizing thousand separators and money formats); job description mentions count as allowed only on lines with a skills context. More than 2 flagged details triggers one automatic rewrite retry with a stricter instruction, at no extra credit.
+- Refund agent (`lib/refund-agent.ts`): "AI proposes, code disposes." The agent only sees request facts and returns `{ decision: approve|deny, message }`. Eligibility, allocation, and amounts are deterministic TypeScript in integer cents (`lib/refund-math.ts`): refundable = purchased - refunded, capped by the cash left in each order; max 3 refund requests per 30 days; eligibility is checked and denials happen before any AI call.
+- Language handling (`lib/language.ts`): dictionary heuristic (no dependency) sets the output language to match the resume.
+- Evaluation harness: `npm run eval` runs 5 fixture pairs against the real model and reports the average unverified-detail count and average score delta (costs real API money; not run in CI; see docs/EVALUATION.md).
+
+## AI tools used
+
+Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrite scoring, and the refund agent. Development: OpenCode assistant (GLM) for scaffolding, refactoring, and test generation; GitHub Copilot-style review workflow. See AI_TOOLS.md (Devpost "Tools used" text is in DEVPOST.md).
+
 ## Setup
+
 1. `npm install`
-2. Copy `.env.example` to `.env.local` and fill values.
-3. Run migrations `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql` (in order).
-4. `npm run dev`
+2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`.
+3. Copy `.env.example` to `.env.local` and fill values (Supabase URL/anon/service keys, OpenAI key, PayPal sandbox client id/secret/webhook id, app URL, repo URL, cost caps, salt).
+4. PayPal Sandbox: create an app at developer.paypal.com, set its webhook URL to `https://<your-domain>/api/paypal/webhook`, subscribe to both `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`, copy the webhook id into `PAYPAL_WEBHOOK_ID`, and copy client id/secret into `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` (plus `NEXT_PUBLIC_PAYPAL_CLIENT_ID` for inline buttons).
+5. Schedule the input purge (DEPLOYMENT.md, pg_cron): `select cron.schedule('purge-job-inputs','45 2 * * *',$$select public.purge_old_job_inputs(interval '30 days');$$);` and demo cleanup on the same page.
+6. `npm run dev` (local) or `npm run build && npm start`. Tests: `npm test` (62 tests, vitest; PayPal/OpenAI are mocked in tests only). Typecheck: `npm run typecheck`. Lint: `npm run lint`.
 
-## Environment variables
-See `.env.example`.
+## Security and idempotency
 
-## PayPal Sandbox
-Create a sandbox app at developer.paypal.com, set the webhook URL to `/api/paypal/webhook`.
+- RLS on all app tables; service role key only server-side; PayPal/OpenAI secrets never in client code.
+- Credit mutations only through SECURITY DEFINER RPCs with row locks and idempotency keys; amounts never trust the client.
+- Orders, captures, grants, refunds, and webhook events are idempotent (ledger keys, `PayPal-Request-Id`, unique webhook event ids).
+- Rate limits: per-user daily analysis cap, global daily cap, 3 demo sessions/IP/hour, 3 refund requests/30 days, PayPal order cap per day.
+- Privacy: no retention by default (character counts only), one-click deletion on the dashboard, scheduled 30-day purge, public /privacy notice.
 
-Subscribe the webhook to **both** events:
-- `PAYMENT.CAPTURE.COMPLETED`
-- `PAYMENT.CAPTURE.REFUNDED` (reflects dashboard refunds in the ledger; do not skip it)
+## Limitations (honest)
 
-### How PayPal is used
-Endpoints called server-side:
-- `POST /v1/oauth2/token` — client-credentials access token (lib/paypal.ts `getAccessToken`).
-- `POST /v2/checkout/orders` — create an order with server-side prices and `PayPal-Request-Id` (idempotency).
-- `POST /v2/checkout/orders/{id}/capture` — capture after buyer approval.
-- `GET /v2/checkout/orders/{id}` — recovery lookups when capture is ambiguous (`ORDER_ALREADY_CAPTURED`).
-- `POST /v2/payments/captures/{id}/refund` — partial refunds of unused credits, with `PayPal-Request-Id` and `note_to_payer`.
-- `POST /v1/notifications/verify-webhook-signature` — webhook authenticity verification.
-
-Client-side:
-- PayPal JS SDK `https://www.paypal.com/sdk/js?client-id=...&currency=USD&intent=capture` rendered inline via Buttons on `/credits`, with the classic redirect flow as fallback.
-
-Webhooks handled: `PAYMENT.CAPTURE.COMPLETED` (grant credits, idempotent by event + capture id) and `PAYMENT.CAPTURE.REFUNDED` (ledger + counters, idempotent by refund id; app-initiated refunds are skipped via `refund_requests.paypal_refund_id`).
-
-## Judge test script
-See `/judges` page.
-
-## Security & idempotency
-- RLS on all tables; service role only server-side.
-- Credit mutations via SECURITY DEFINER RPCs with row locks.
-- Webhook signature verified via PayPal API.
-- Idempotency keys on orders, captures, grants, webhook events.
+- Payments are Sandbox only; live mode is supported by config (`PAYPAL_ENV=live`) but is not to be trusted without your own QA and PayPal policies.
+- LLM output can still drift in free-text fields; the fabrication guard is a heuristic verifier, not a fact-checker.
+- Rate limiters are in-memory + database-backed; horizontal scale needs a shared store (e.g. Upstash) for full accuracy.
+- The demo account flow expects Supabase email confirmation to be disabled in the project settings.
+- The public URL is not verified in this environment (no deployment performed from here); `npm run build` must pass locally.
 
 ## License
-MIT. See `LICENSE`.
 
-## AI tools
-See `AI_TOOLS.md`.
+MIT. See `LICENSE`.
