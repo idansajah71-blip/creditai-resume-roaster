@@ -11,7 +11,7 @@
   --color-border-strong: #CFCABD;
   --color-ink: #14161A;
   --color-ink-muted: #565B63;
-  --color-ink-faint: #7A7F87;
+  --color-ink-faint: #666B73;
   --color-accent: #1F4FD8;
   --color-accent-hover: #1A42B5;
   --color-accent-soft: #E8EEFC;
@@ -114,6 +114,17 @@ body {
 .btn-secondary .spinner, .btn-ghost .spinner { border-color: rgba(20,22,26,0.2); border-top-color: var(--color-ink); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 @media (max-width: 640px) {
   h1 { font-size: 32px; line-height: 38px; }

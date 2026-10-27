@@ -159,7 +159,16 @@ export default function AnalyzePage() {
           </div>
           <div
             className="mb-3 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border border-dashed border-border-strong bg-surface-muted px-4 py-6 text-sm text-ink-muted"
+            role="button"
+            tabIndex={0}
+            aria-label="Upload PDF (max 5MB)"
             onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileRef.current?.click();
+              }
+            }}
           >
             <span>Upload PDF (max 5MB)</span>
             <input ref={fileRef} type="file" accept="application/pdf" onChange={onPdfChange} className="hidden" />
@@ -175,6 +184,7 @@ export default function AnalyzePage() {
           <Textarea
             required
             placeholder="Paste resume text"
+            aria-label="Resume text"
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             className="min-h-[220px]"
@@ -207,6 +217,7 @@ export default function AnalyzePage() {
           <Textarea
             required
             placeholder="Paste job description"
+            aria-label="Job description"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             maxLength={10000}
@@ -229,7 +240,11 @@ export default function AnalyzePage() {
         </div>
 
         {insufficient && (
-          <div className="rounded-[10px] border border-warning/40 bg-warning-soft px-4 py-3">
+          <div
+            className="rounded-[10px] border border-warning/40 bg-warning-soft px-4 py-3"
+            role="status"
+            aria-live="polite"
+          >
             <p className="text-sm font-medium text-warning">You are out of credits.</p>
             <a href="/credits" className="mt-2 inline-block text-sm font-semibold text-accent hover:underline">
               Buy credits
@@ -242,7 +257,9 @@ export default function AnalyzePage() {
       <div className="lg:sticky lg:top-24 lg:self-start">
         {loading && (
           <Card>
-            <p className="text-sm text-ink-muted">{progress || "Running AI analysis..."}</p>
+            <p className="text-sm text-ink-muted" aria-live="polite">
+              {progress || "Running AI analysis..."}
+            </p>
           </Card>
         )}
         {result && (

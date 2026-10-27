@@ -46,9 +46,15 @@ async function main() {
   if (grantErr) console.error("grant error:", grantErr.message);
   else console.log("Granted 5 demo credits to", email);
 
+  // Do not print the password by default; pass --show-password on a trusted
+  // terminal. The /api/demo/session flow does not need this script at all.
   console.log("\nDemo credentials:");
   console.log("Email:", email);
-  console.log("Password:", password);
+  if (process.argv.includes("--show-password")) {
+    console.log("Password:", password);
+  } else {
+    console.log("Password: hidden (run with --show-password to display)");
+  }
 }
 
 main();

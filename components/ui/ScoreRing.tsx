@@ -4,7 +4,14 @@ export function ScoreRing({ score }: { score: number }) {
   const c = 2 * Math.PI * r;
   const offset = c - (score / 100) * c;
   return (
-    <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0">
+    <svg
+      width="100"
+      height="100"
+      viewBox="0 0 100 100"
+      className="shrink-0"
+      role="img"
+      aria-label={`Match score ${score} out of 100`}
+    >
       <circle cx="50" cy="50" r={r} fill="none" stroke="#E4E1D8" strokeWidth="8" />
       <circle
         cx="50"

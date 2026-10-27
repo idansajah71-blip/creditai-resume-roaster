@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/Badge";
 import SystemStatusCard from "@/components/SystemStatusCard";
 import { createClient } from "@/lib/supabase/client";
 
-const buyerEmail = process.env.NEXT_PUBLIC_PAYPAL_BUYER_EMAIL || "sb-buyer@example.com";
-const buyerPass = process.env.NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD || "placeholder";
+const buyerEmail = process.env.NEXT_PUBLIC_PAYPAL_BUYER_EMAIL || "";
+const buyerPass = process.env.NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD || "";
+const buyerConfigured = Boolean(buyerEmail) && Boolean(buyerPass);
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
@@ -114,20 +115,28 @@ export default function JudgesPage() {
             On /credits choose Later for 10 credits, approve with the inline PayPal button using
             these sandbox buyer credentials:
           </p>
-          <div className="mt-4 space-y-3">
-            <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
-                Buyer email
+          {buyerConfigured ? (
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
+                  Buyer email
+                </div>
+                <CopyField value={buyerEmail} />
               </div>
-              <CopyField value={buyerEmail} />
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
-                Buyer password
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">
+                  Buyer password
+                </div>
+                <CopyField value={buyerPass} />
               </div>
-              <CopyField value={buyerPass} />
             </div>
-          </div>
+          ) : (
+            <p className="mt-4 text-sm text-warning">
+              Buyer credentials not configured. Set NEXT_PUBLIC_PAYPAL_BUYER_EMAIL and
+              NEXT_PUBLIC_PAYPAL_BUYER_PASSWORD, or create your own Sandbox personal account
+              (developer.paypal.com - Testing tools - Sandbox accounts).
+            </p>
+          )}
           <div className="mt-3">
             <a href="/credits" className="btn btn-secondary px-4 py-2 text-sm">
               Open Credits
