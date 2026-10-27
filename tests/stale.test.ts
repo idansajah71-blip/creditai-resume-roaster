@@ -26,7 +26,8 @@ const analyzeResume = vi.fn().mockResolvedValue(JSON.stringify({
   recommendations: [{ section: "Experience", advice: "add metrics" }],
   rewrittenResume: "Jane Doe ...",
 }));
-vi.mock("@/lib/openai", () => ({ analyzeResume }));
+const scoreResume = vi.fn();
+vi.mock("@/lib/openai", () => ({ analyzeResume, scoreResume }));
 
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimitDb: async () => true }));
 

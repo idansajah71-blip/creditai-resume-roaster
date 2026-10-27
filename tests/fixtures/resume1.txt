@@ -1,0 +1,18 @@
+Jane Doe
+Backend Engineer
+
+EXPERIENCE
+Backend Engineer, Northwind Retail (2021-05 to 2025-01)
+- Built inventory sync services handling 3,000 orders per hour on peak days
+- Reduced average checkout latency from 900ms to 240ms
+- Led migration of 14 legacy services to the new platform
+
+Junior Developer, Bricklane Studio (2019-02 to 2021-04)
+- Maintained internal admin tools used by 60 employees
+- Wrote integration tests covering the payment refund flow
+
+SKILLS
+Go, Node.js, PostgreSQL, Redis, Docker, Kafka
+
+EDUCATION
+B.Sc. Computer Science, Lakeside University, 2018

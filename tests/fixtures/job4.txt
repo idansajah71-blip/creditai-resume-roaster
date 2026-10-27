@@ -1,0 +1,11 @@
+Senior Frontend Engineer
+
+Responsibilities
+- Own the customer-facing React app used by 1 million monthly visitors
+- Work with designers to implement accessible components
+
+Requirements
+Skills: React, TypeScript, Next.js, Tailwind CSS, testing
+Experience: 3+ years shipping production frontend
+Nice to have: performance profiling, accessibility audits
+Tools: Vitest, Playwright, GitHub Actions

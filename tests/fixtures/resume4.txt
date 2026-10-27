@@ -1,0 +1,16 @@
+Chris Wells
+Frontend Developer
+
+EXPERIENCE
+Frontend Developer, Copper & Co Agency (2022-01 to 2026-03)
+- Shipped 9 client sites using React and Next.js
+- Cut bundle size by 38% with code splitting
+- Present weekly demos to clients
+
+Web Development Bootcamp Graduate, Beacon Coding School (2021)
+
+SKILLS
+JavaScript, TypeScript, React, Next.js, Tailwind CSS, Figma
+
+EDUCATION
+B.A. Communications, Fairview College, 2020

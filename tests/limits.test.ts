@@ -10,7 +10,8 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 const analyzeResume = vi.fn();
-vi.mock("@/lib/openai", () => ({ analyzeResume }));
+const scoreResume = vi.fn();
+vi.mock("@/lib/openai", () => ({ analyzeResume, scoreResume }));
 
 const reserveCredit = vi.fn();
 const consumeReservation = vi.fn();

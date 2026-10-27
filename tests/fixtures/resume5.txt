@@ -1,0 +1,17 @@
+Bimo Santoso
+QA Engineer
+
+PENGALAMAN
+QA Engineer, Bank Werda (2022-04 hingga 2026-01)
+- Menyusun 400 skenario uji regresi untuk aplikasi mobile banking
+- Menemukan dan mendokumentasikan 120 bug prioritas tinggi
+- Membangun otomasi uji harian yang menghemat 10 jam kerja per minggu
+
+QA Intern, Lini Data (2021-09 hingga 2022-03)
+- Uji manual fitur onboarding pengguna baru
+
+KEAHLIAN
+Manual testing, Playwright, Postman, SQL dasar, Git
+
+PENDIDIKAN
+D3 Teknik Komputer, Politeknik Wirata, 2021

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { reserveCredit, consumeReservation, refundReservation } from "@/lib/credits";
-import { analyzeResume } from "@/lib/openai";
+import { analyzeResume, scoreResume } from "@/lib/openai";
 import { analysisResultSchema } from "@/lib/ai-schema";
+import { findUnverifiedDetails } from "@/lib/fabrication-guard";
+import { detectLanguage } from "@/lib/language";
 export const maxDuration = 60;
 
 import { checkRateLimitDb } from "@/lib/rate-limit";
@@ -141,8 +143,9 @@ export async function POST(request: Request) {
 
   // call AI
   let raw: string;
+  const language = detectLanguage(resumeText);
   try {
-    raw = await analyzeResume(resumeText, jobDescription);
+    raw = await analyzeResume(resumeText, jobDescription, { language });
   } catch {
     await service.from("ai_jobs").update({ status: "failed", error: "ai_request_failed" }).eq("id", job.id);
     await refundReservation(reservationId);
@@ -158,6 +161,33 @@ export async function POST(request: Request) {
     await refundReservation(reservationId);
     return NextResponse.json({ success: false, message: "invalid ai output" }, { status: 502 });
   }
+
+  // fabrication guard (deterministic): flag details absent from the original
+  let unverified = findUnverifiedDetails(resumeText, result.rewrittenResume, jobDescription);
+  if (unverified.length > 2) {
+    // One retry with stricter instructions, at no extra credit cost.
+    try {
+      const retryRaw = await analyzeResume(resumeText, jobDescription, {
+        language,
+        avoidDetails: unverified,
+      });
+      const retryResult = analysisResultSchema.parse(JSON.parse(retryRaw));
+      result = retryResult;
+      unverified = findUnverifiedDetails(resumeText, result.rewrittenResume, jobDescription);
+    } catch {
+      // Keep the first result and report the flagged details as-is.
+    }
+  }
+
+  // Before/after estimate: cheap second scoring pass; omit silently on failure.
+  try {
+    result.estimatedAfterScore = await scoreResume(result.rewrittenResume, jobDescription);
+  } catch {
+    // no delta shown
+  }
+
+  result.language = language;
+  result.unverifiedDetails = unverified;
 
   // persist result
   await service

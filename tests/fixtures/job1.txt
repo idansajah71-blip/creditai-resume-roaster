@@ -1,0 +1,16 @@
+Senior Backend Engineer - Commerce Platform
+
+Responsibilities
+- Design and scale services for a high-traffic commerce platform
+- Improve p99 latency on checkout flows
+- Mentor 2-4 engineers
+
+Requirements
+Skills: Kubernetes, PostgreSQL, Node.js, Kafka, Redis, distributed systems
+Experience: 5+ years backend engineering, 2+ years in e-commerce
+Must have: ownership of production services, on-call experience
+Tools: Datadog, Terraform, GitHub Actions
+
+Nice to have
+- Experience with migration of legacy systems
+- Retail or logistics domain knowledge

@@ -21,6 +21,9 @@ type AnalysisResult = {
   missingKeywords: string[];
   recommendations: { section: string; advice: string }[];
   rewrittenResume: string;
+  estimatedAfterScore?: number;
+  unverifiedDetails?: string[];
+  language?: "en" | "id";
 };
 
 type JobRow = { id: string; status: string; result: string | null; created_at: string };
@@ -235,12 +238,46 @@ export default function AnalyzePage() {
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">Match score</div>
                   <div className="font-mono text-2xl text-ink">{result.matchScore}/100</div>
+                  {typeof result.estimatedAfterScore === "number" && (
+                    <div className="mt-1 text-sm text-ink">
+                      <span className="text-ink-muted">Rewritten estimate:</span>{" "}
+                      <span className="font-mono">
+                        {result.matchScore} -&gt; {result.estimatedAfterScore}
+                      </span>
+                      <div className="text-xs text-ink-faint">AI estimate, not a guarantee</div>
+                    </div>
+                  )}
                 </div>
+                {result.language && (
+                  <Badge variant="neutral" className="ml-auto">
+                    {result.language === "id" ? "Indonesian" : "English"}
+                  </Badge>
+                )}
               </div>
               <div className="mt-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">Roast</div>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{result.roast}</p>
               </div>
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-semibold text-ink">Fabrication check</h3>
+              {result.unverifiedDetails && result.unverifiedDetails.length > 0 ? (
+                <>
+                  <p className="mt-1 text-sm text-warning">
+                    {result.unverifiedDetails.length} detail(s) in the rewrite were not found in your original resume. Verify them yourself.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {result.unverifiedDetails.map((d, i) => (
+                      <span key={i} className="rounded-full bg-warning-soft px-2.5 py-0.5 font-mono text-xs text-warning">
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-success">No new facts were added.</p>
+              )}
             </Card>
 
             <Card>

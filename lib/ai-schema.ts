@@ -20,6 +20,10 @@ export const analysisResultSchema = z.object({
     }),
   ).min(1),
   rewrittenResume: z.string().min(1),
+  // Server-derived optional fields (never produced by the model itself).
+  estimatedAfterScore: z.number().int().min(0).max(100).optional(),
+  unverifiedDetails: z.array(z.string()).optional(),
+  language: z.enum(["en", "id"]).optional(),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;

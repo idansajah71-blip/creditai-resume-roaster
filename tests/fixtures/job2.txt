@@ -1,0 +1,14 @@
+Growth Marketing Analyst
+
+About the role
+You will own funnel measurement for growth campaigns and advise acquisition teams.
+
+What you will do
+- Build dashboards and run experiments on landing pages
+- Define north-funnel metrics with product managers
+
+Requirements
+Skills: SQL, Python, A/B testing, Looker, Google Analytics
+Experience: 2+ years in marketing analytics or growth data
+Nice to have: experimentation frameworks, retail or e-commerce domain
+Tools: Amplitude, BigQuery, dbt

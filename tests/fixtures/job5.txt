@@ -1,0 +1,11 @@
+QA Automation Engineer
+
+Tanggung jawab
+- Mengotomasi pengujian aplikasi web dan mobile perbankan
+- Berkolaborasi dengan developer untuk mencegah regresi
+
+Persyaratan
+Keahlian: Playwright, Postman, SQL, Git
+Pengalaman: 2+ tahun QA, 1+ tahun otomasi uji
+Bonus: pengalaman domain perbankan, keamanan aplikasi
+Perkakas: TestRail, JIRA, CI/CD

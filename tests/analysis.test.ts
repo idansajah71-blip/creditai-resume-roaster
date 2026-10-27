@@ -32,7 +32,8 @@ vi.mock("@/lib/credits", () => ({
 }));
 
 const analyzeResume = vi.fn();
-vi.mock("@/lib/openai", () => ({ analyzeResume }));
+const scoreResume = vi.fn();
+vi.mock("@/lib/openai", () => ({ analyzeResume, scoreResume }));
 
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimitDb: async () => true }));
 
@@ -100,6 +101,7 @@ describe("analyze route", () => {
   it("finalizes (consumes) on success", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
     analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    scoreResume.mockResolvedValue(88);
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
       method: "POST",
@@ -110,7 +112,65 @@ describe("analyze route", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.result.matchScore).toBe(80);
+    expect(json.data.result.estimatedAfterScore).toBe(88);
+    expect(json.data.result.unverifiedDetails).toContain("Jane Doe");
     expect(consumeReservation).toHaveBeenCalledWith("res1");
+  });
+
+  it("omits the after-score delta silently when scoring fails", async () => {
+    reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
+    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    scoreResume.mockRejectedValue(new Error("openai_http_error"));
+    const { POST } = await import("@/app/api/ai/analyze/route");
+    const req = new Request("http://localhost/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: "r", jobDescription: "j" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.result.estimatedAfterScore).toBeUndefined();
+    expect(consumeReservation).toHaveBeenCalledWith("res1");
+  });
+
+  it("retries the rewrite once when more than 2 details are unverified", async () => {
+    reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
+    const fabricated = {
+      ...validResult,
+      rewrittenResume:
+        "Jane polished things at Acme Rocket Labs, managing a $1,200 budget, growing 40% until 2029.",
+    };
+    const clean = {
+      ...validResult,
+      rewrittenResume: "Improved checkout flows using solid engineering habits.",
+    };
+    analyzeResume
+      .mockResolvedValueOnce(JSON.stringify(fabricated))
+      .mockResolvedValueOnce(JSON.stringify(clean));
+    scoreResume.mockResolvedValue(75);
+
+    const { POST } = await import("@/app/api/ai/analyze/route");
+    const req = new Request("http://localhost/api/ai/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: "r", jobDescription: "j" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    // Two model attempts, single credit consumed.
+    expect(analyzeResume).toHaveBeenCalledTimes(2);
+    expect(consumeReservation).toHaveBeenCalledTimes(1);
+    // Original result's rewrite replaced by the stricter one.
+    expect(json.data.result.rewrittenResume).toBe(clean.rewrittenResume);
+    // Retry prompt carries the forbidden details.
+    const secondOptions = analyzeResume.mock.calls[1][2];
+    expect(secondOptions.avoidDetails).toEqual(
+      expect.arrayContaining(["Acme Rocket Labs"]),
+    );
+    // Clean rewrite has no unverified details left.
+    expect(json.data.result.unverifiedDetails).toEqual([]);
   });
 
   it("handles concurrent requests: second fails insufficient", async () => {

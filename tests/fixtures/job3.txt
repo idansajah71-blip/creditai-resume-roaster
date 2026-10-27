@@ -1,0 +1,14 @@
+Senior Mobile Engineer (Android)
+
+Tanggung jawab
+- Memimpin pengembangan fitur pembayaran di aplikasi Android
+- Menjaga kualitas aplikasi untuk jutaan pengguna
+
+Persyaratan
+Keahlian: Kotlin, Jetpack Compose, Retrofit, Firebase
+Pengalaman: 4+ tahun pengembangan aplikasi Android
+Keuntungan tambahan: pengalaman fintech atau pembayaran
+Perkakas: Android Studio, CI/CD
+
+Benefit
+- Gaji kompetitif dan makan siang gratis

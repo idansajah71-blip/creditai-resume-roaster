@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "eval": "node scripts/eval.mjs",
     "test:watch": "vitest",
     "seed:demo": "node scripts/seed-demo.mjs"
   },

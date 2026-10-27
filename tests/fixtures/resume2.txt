@@ -1,0 +1,17 @@
+Maya Prasetyo
+Marketing Analyst
+
+EXPERIENCE
+Marketing Analyst, Sinar Retail Group (2020-03 to 2026-01)
+- Owned weekly campaign reporting for 8 marketing channels
+- Built a churn dashboard used by 40 stakeholders
+- A/B tested landing pages, lifting conversion from 2.1% to 3.4%
+
+Data Intern, Kite Media (2019-06 to 2019-12)
+- Cleaned and joined campaign datasets in SQL
+
+SKILLS
+SQL, Python (pandas), Looker, Google Analytics, Excel
+
+EDUCATION
+B.A. Statistics, Meridian State University, 2019

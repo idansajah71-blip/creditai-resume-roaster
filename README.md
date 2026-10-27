@@ -7,11 +7,19 @@ Placeholder: https://your-deployment.vercel.app
 
 ## Features
 - Real OpenAI inference with structured JSON output.
+- Before/after match estimate ("AI estimate, not a guarantee") included in the same credit.
+- Deterministic fabrication guard: the rewrite is checked against your original resume; flagged details are shown for verification.
+- Indonesian/English detection with answers in the resume's language.
 - Atomic credit reservation/finalization/refund.
 - PayPal Sandbox payments with webhook verification.
 - Idempotent orders, captures, grants, webhook events.
 - User-specific analysis and transaction history.
 - PDF upload for resumes.
+
+## Claims and evaluation
+
+See `docs/EVALUATION.md` and `npm run eval` (optional, costs real API money, not run in CI):
+average unverified details and average rewritten-score delta across 5 fixtures.
 
 ## Architecture
 ```mermaid

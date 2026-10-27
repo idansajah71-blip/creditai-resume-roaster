@@ -1,0 +1,17 @@
+Rina Kusuma
+Mobile Developer
+
+PENGALAMAN
+Mobile Developer, Toko Amanah (2021-08 hingga 2026-02)
+- Mengembangkan aplikasi Android untuk 50.000 pengguna aktif bulanan
+- Menambahkan fitur pembayaran QRIS yang menaikkan konversi checkout 18%
+- Merapihkan modularisasi kode bersama 6 anggota tim
+
+Android Intern, Studio Langit (2020-01 hingga 2020-07)
+- Membuat 5 modul layar untuk aplikasi kursus online
+
+KEAHLIAN
+Kotlin, Jetpack Compose, Retrofit, Firebase, PostgreSQL dasar
+
+PENDIDIKAN
+S1 Teknik Informatika, Universitas Cakra, 2020
