@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 import { Toast } from "@/components/ui/Toast";
 import PayPalCheckout, { type PayPalCheckoutStatus } from "@/components/PayPalCheckout";
+import { fetchWithTimeout, clientErrorMessage, PAYPAL_UNREACHABLE_MESSAGE } from "@/lib/fetch-timeout";
 
 type Package = { id: string; credits: number; amount: string };
 
@@ -154,17 +155,19 @@ function CreditsInner() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/paypal/orders", {
+      const res = await fetchWithTimeout("/api/paypal/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packageId }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "create order failed");
+      if (!res.ok) throw new Error(json.message || PAYPAL_UNREACHABLE_MESSAGE);
       window.location.assign(json.data.approvalUrl);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "error";
-      setError(msg);
+      setError(clientErrorMessage(e));
+    } finally {
+      // Always clear the loading state, success (before navigation completes)
+      // and failure alike; a stuck spinner must never mask an error.
       setLoading(false);
     }
   }

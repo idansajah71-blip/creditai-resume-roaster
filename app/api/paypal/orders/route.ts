@@ -65,6 +65,14 @@ export async function POST(request: Request) {
 
   let paypalOrder;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
+    // Never log the values; env names are enough for an operator.
+    console.error("paypal orders: PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET is missing");
+    return NextResponse.json(
+      { success: false, message: "PayPal is not configured correctly" },
+      { status: 502 },
+    );
+  }
   try {
     paypalOrder = await createPayPalOrder(
       pkg.amount,
@@ -73,7 +81,10 @@ export async function POST(request: Request) {
       `${appUrl}/credits`,
       `${appUrl}/credits?cancel=1`,
     );
-  } catch {
+  } catch (e) {
+    // Log the underlying error text (e.g. paypal_timeout, paypal_create_failed)
+    // without any credentials; the token is never part of these errors.
+    console.error("paypal create failed", e instanceof Error ? e.message : e);
     return NextResponse.json({ success: false, message: "paypal create failed" }, { status: 502 });
   }
 

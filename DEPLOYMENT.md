@@ -7,7 +7,7 @@
 4. Deploy.
 
 ## Database
-- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql` in Supabase SQL editor (in order).
+- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql` in Supabase SQL editor (in order).
 
 ## Privacy retention
 - Migration `0007_purge_inputs.sql` makes `ai_jobs.input` nullable and adds `purge_old_job_inputs(p_older_than interval default interval '30 days')`

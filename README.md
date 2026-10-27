@@ -91,7 +91,7 @@ Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrit
 ## Setup
 
 1. `npm install`
-2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`.
+2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql`.
 3. Copy `.env.example` to `.env.local` and fill values (Supabase URL/anon/service keys, OpenAI key, PayPal sandbox client id/secret/webhook id, app URL, repo URL, cost caps, salt).
 4. PayPal Sandbox: create an app at developer.paypal.com, set its webhook URL to `https://<your-domain>/api/paypal/webhook`, subscribe to both `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`, copy the webhook id into `PAYPAL_WEBHOOK_ID`, and copy client id/secret into `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` (plus `NEXT_PUBLIC_PAYPAL_CLIENT_ID` for inline buttons).
 5. Schedule the input purge (DEPLOYMENT.md, pg_cron): `select cron.schedule('purge-job-inputs','45 2 * * *',$$select public.purge_old_job_inputs(interval '30 days');$$);` and demo cleanup on the same page.
@@ -101,6 +101,7 @@ Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrit
 
 - RLS on all app tables; service role key only server-side; PayPal/OpenAI secrets never in client code.
 - Credit mutations only through SECURITY DEFINER RPCs with row locks and idempotency keys; amounts never trust the client.
+- Signup grants: every new account receives 3 free starter credits (migration 0009 `grant_signup_credits` trigger, idempotent ledger key `signup:<user id>`, insert-safe inside an EXCEPTION block). Trade-off: free credits are a bounded abuse surface, and spend is capped by the ordinary rate limits `AI_DAILY_LIMIT_PER_USER` and `AI_GLOBAL_DAILY_LIMIT`, so bulk fake signups can only consume the global daily analysis budget; the grant itself never blocks account creation.
 - Orders, captures, grants, refunds, and webhook events are idempotent (ledger keys, `PayPal-Request-Id`, unique webhook event ids).
 - Rate limits: per-user daily analysis cap, global daily cap, 3 demo sessions/IP/hour, 3 refund requests/30 days, PayPal order cap per day.
 - Privacy: no retention by default (character counts only), one-click deletion on the dashboard, scheduled 30-day purge, public /privacy notice.

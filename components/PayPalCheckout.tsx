@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { fetchWithTimeout, clientErrorMessage, PAYPAL_UNREACHABLE_MESSAGE } from "@/lib/fetch-timeout";
 
 type PackageItem = { id: string; credits: number; amount: string };
 
@@ -67,33 +68,44 @@ export default function PayPalCheckout({
           style: { layout: "vertical", shape: "pill", label: "paypal" },
           createOrder: async () => {
             setBusy(p.id);
-            const res = await fetch("/api/paypal/orders", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "idempotency-key": crypto.randomUUID(),
-              },
-              body: JSON.stringify({ packageId: p.id }),
-            });
-            const json = await res.json();
-            setBusy(null);
-            if (!json.success) throw new Error(json.message || "create order failed");
-            return json.data.paypalOrderId as string;
+            try {
+              const res = await fetchWithTimeout("/api/paypal/orders", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "idempotency-key": crypto.randomUUID(),
+                },
+                body: JSON.stringify({ packageId: p.id }),
+              });
+              const json = await res.json();
+              if (!json.success) {
+                throw new Error(json.message || PAYPAL_UNREACHABLE_MESSAGE);
+              }
+              return json.data.paypalOrderId as string;
+            } finally {
+              // Always clear the busy state, even when the call hangs.
+              setBusy(null);
+            }
           },
           onApprove: async (data) => {
             setBusy(p.id);
             try {
-              const res = await fetch(`/api/paypal/orders/${data.orderID}/capture`, { method: "POST" });
+              const res = await fetchWithTimeout(`/api/paypal/orders/${data.orderID}/capture`, {
+                method: "POST",
+              });
               const json = await res.json();
-              setBusy(null);
-              if (!json.success) throw new Error(json.message || "capture failed");
+              if (!json.success) {
+                throw new Error(json.message || PAYPAL_UNREACHABLE_MESSAGE);
+              }
               onStatus("captured", {
                 creditsGranted: json.data.creditsGranted,
                 balance: json.data.balance,
               });
             } catch (e) {
+              onStatus("error", { message: clientErrorMessage(e) });
+            } finally {
+              // Always clear the busy state, even when the call hangs.
               setBusy(null);
-              onStatus("error", { message: String(e instanceof Error ? e.message : e) });
             }
           },
           onCancel: () => onStatus("cancelled"),

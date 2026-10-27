@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import DeleteDataSection from "@/components/DeleteDataSection";
+import StarterCreditsBanner from "@/components/StarterCreditsBanner";
 import Link from "next/link";
 
 export default async function DashboardPage() {
@@ -43,6 +44,8 @@ export default async function DashboardPage() {
         </h1>
         <p className="mt-1 text-sm text-ink-muted">Welcome back.</p>
       </div>
+
+      <StarterCreditsBanner />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Stat label="Credits" value={profile?.credit_balance ?? 0} />

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const { mockService, paypalToken } = vi.hoisted(() => {
   const select = vi.fn().mockReturnValue({
@@ -18,10 +18,23 @@ vi.mock("@/lib/paypal", () => ({
 }));
 
 describe("GET /api/health", () => {
+  beforeEach(() => {
+    // Credentials present by default: the paypal check performs a real
+    // (mocked) token fetch in these tests.
+    process.env.PAYPAL_CLIENT_ID = "client";
+    process.env.PAYPAL_CLIENT_SECRET = "secret";
+    paypalToken.mockReset().mockResolvedValue("token");
+  });
+
+  afterEach(() => {
+    delete process.env.PAYPAL_CLIENT_ID;
+    delete process.env.PAYPAL_CLIENT_SECRET;
+  });
+
   it("returns boolean checks, aggregates ok, and serves from the 30s cache", async () => {
     const { GET } = await import("@/app/api/health/route");
 
-    // First call runs the checks. In the test env the config envs are absent.
+    // First call runs the checks.
     const res1 = await GET();
     expect(res1.status).toBe(200);
     const json1 = await res1.json();
@@ -45,5 +58,22 @@ describe("GET /api/health", () => {
     expect(json2.checks.paypal).toBe(true);
     // Only one real OAuth fetch so far.
     expect(paypalToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports paypal:false with a short reason when credentials are missing", async () => {
+    // Fresh module instance so the 30s cache from the first test is not reused.
+    vi.resetModules();
+    delete process.env.PAYPAL_CLIENT_ID;
+    process.env.PAYPAL_CLIENT_SECRET = "super-secret-value"; // present, must never be logged
+
+    const { GET } = await import("@/app/api/health/route");
+    const res = await GET();
+    const json = await res.json();
+    expect(json.checks.paypal).toBe(false);
+    expect(json.paypal_reason).toContain("PAYPAL_CLIENT_ID");
+    // Reason states the env names only; the value must never appear.
+    expect(JSON.stringify(json)).not.toContain("super-secret-value");
+    // No doomed OAuth fetch is attempted.
+    expect(paypalToken).not.toHaveBeenCalled();
   });
 });

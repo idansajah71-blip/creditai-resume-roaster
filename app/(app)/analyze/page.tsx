@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Textarea } from "@/components/ui/Textarea";
 import { ScoreRing } from "@/components/ui/ScoreRing";
+import StarterCreditsBanner from "@/components/StarterCreditsBanner";
 
 type Match = { requirement: string; status: "met" | "partial" | "missing"; evidence: string };
 
@@ -152,6 +153,7 @@ export default function AnalyzePage() {
         <h1 className="text-[32px] font-semibold leading-[38px] text-ink md:text-[40px] md:leading-[44px]">
           Analyze
         </h1>
+        <StarterCreditsBanner />
         <Card>
           <div className="mb-4">
             <div className="text-xs font-semibold uppercase tracking-[0.06em] text-ink-faint">Step 1</div>

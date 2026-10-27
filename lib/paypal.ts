@@ -6,6 +6,26 @@ export type CaptureResult = {
   captureStatus: string | null;
 };
 
+// Every PayPal API call gets one chance to finish inside this window; the
+// request is aborted and a descriptive "paypal_timeout" error is thrown so
+// callers never hang silently waiting for PayPal.
+export const PAYPAL_FETCH_TIMEOUT_MS = 15_000;
+
+export async function paypalFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PAYPAL_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) {
+      throw new Error("paypal_timeout");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function base() {
   return process.env.PAYPAL_ENV === "live"
     ? "https://api-m.paypal.com"
@@ -19,7 +39,7 @@ function authHeader() {
 }
 
 export async function getAccessToken(): Promise<string> {
-  const res = await fetch(`${base()}/v1/oauth2/token`, {
+  const res = await paypalFetch(`${base()}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: authHeader(),
@@ -40,7 +60,7 @@ export async function createPayPalOrder(
   cancelUrl?: string,
 ): Promise<{ id: string; approvalUrl: string }> {
   const token = await getAccessToken();
-  const res = await fetch(`${base()}/v2/checkout/orders`, {
+  const res = await paypalFetch(`${base()}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -84,7 +104,7 @@ export async function getPayPalOrder(orderId: string): Promise<{
   captureStatus: string | null;
 }> {
   const token = await getAccessToken();
-  const res = await fetch(`${base()}/v2/checkout/orders/${orderId}`, {
+  const res = await paypalFetch(`${base()}/v2/checkout/orders/${orderId}`, {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -109,7 +129,7 @@ export async function getPayPalOrder(orderId: string): Promise<{
 
 export async function capturePayPalOrder(orderId: string): Promise<CaptureResult> {
   const token = await getAccessToken();
-  const res = await fetch(`${base()}/v2/checkout/orders/${orderId}/capture`, {
+  const res = await paypalFetch(`${base()}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -145,7 +165,7 @@ export async function refundCapture(
   note: string,
 ): Promise<RefundResult> {
   const token = await getAccessToken();
-  const res = await fetch(`${base()}/v2/payments/captures/${captureId}/refund`, {
+  const res = await paypalFetch(`${base()}/v2/payments/captures/${captureId}/refund`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -176,7 +196,7 @@ export async function verifyWebhookSignature(
     webhook_id: process.env.PAYPAL_WEBHOOK_ID,
     webhook_event: event,
   };
-  const res = await fetch(`${base()}/v1/notifications/verify-webhook-signature`, {
+  const res = await paypalFetch(`${base()}/v1/notifications/verify-webhook-signature`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
