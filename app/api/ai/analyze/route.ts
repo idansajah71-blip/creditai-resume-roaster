@@ -6,6 +6,7 @@ import { reserveCredit, consumeReservation, refundReservation } from "@/lib/cred
 import { analyzeResume, scoreResume } from "@/lib/openai";
 import { analysisResultSchema } from "@/lib/ai-schema";
 import { findUnverifiedDetails } from "@/lib/fabrication-guard";
+import { compareCoverage, filterKeywordsAgainstJD } from "@/lib/coverage";
 import { detectLanguage } from "@/lib/language";
 export const maxDuration = 60;
 
@@ -209,6 +210,22 @@ export async function POST(request: Request) {
   result.language = language;
   result.unverifiedDetails = unverified;
 
+  // Deterministic keyword coverage, computed by code from the job wording the
+  // model extracted (keywords must exist in the JD itself; anti-hallucination
+  // filter drops the rest). No extra model calls. Response-only for now:
+  // nothing here is persisted.
+  const keywords = filterKeywordsAgainstJD(result.jdKeywords ?? [], jobDescription).slice(0, 25);
+  const cov = compareCoverage(resumeText, result.rewrittenResume, keywords);
+  const coverage = {
+    before: cov.before.score,
+    after: cov.after.score,
+    gain: cov.gain,
+    addedTerms: cov.addedTerms,
+    lostTerms: cov.lostTerms,
+    matched: cov.after.matched,
+    missing: cov.after.missing,
+  };
+
   // persist result
   await service
     .from("ai_jobs")
@@ -229,6 +246,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
-    data: { jobId: job.id, status: "succeeded", result },
+    // coverage is attached for the response only; the stored job result stays
+    // exactly the model output plus the server-derived flags.
+    data: { jobId: job.id, status: "succeeded", result: { ...result, coverage } },
   });
 }

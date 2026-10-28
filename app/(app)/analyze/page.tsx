@@ -18,6 +18,18 @@ import StarterCreditsBanner from "@/components/StarterCreditsBanner";
 
 type Match = { requirement: string; status: "met" | "partial" | "missing"; evidence: string };
 
+type Term = { term: string; weight: 1 | 2 | 3 };
+
+type Coverage = {
+  before: number;
+  after: number;
+  gain: number;
+  addedTerms: Term[];
+  lostTerms: Term[];
+  matched: Term[];
+  missing: Term[];
+};
+
 type AnalysisResult = {
   matchScore: number;
   roast: string;
@@ -27,6 +39,8 @@ type AnalysisResult = {
   missingKeywords: string[];
   recommendations: { section: string; advice: string }[];
   rewrittenResume: string;
+  jdKeywords?: Term[];
+  coverage?: Coverage;
   estimatedAfterScore?: number;
   unverifiedDetails?: string[];
   language?: "en" | "id";
@@ -38,6 +52,87 @@ function bandStamp(score: number): { label: string; tone: "red" | "ink" } {
   if (score >= 75) return { label: "Strong match", tone: "ink" };
   if (score >= 50) return { label: "Partial match", tone: "ink" };
   return { label: "Weak match", tone: "red" };
+}
+
+function clampPct(n: number): number {
+  return Math.max(0, Math.min(100, n));
+}
+
+/* Deterministic keyword coverage sheet: before -> after numbers over a bar
+   (highlighter fill = after, ink tick = before), plus matched and missing
+   term lists. The engine itself is pure code, never the model. */
+function CoverageSheet({ coverage }: { coverage: Coverage }) {
+  const gain = coverage.gain;
+  return (
+    <Sheet className="reveal" style={{ animationDelay: "60ms" }}>
+      <h3 className="type-h3 text-ink">Keyword coverage</h3>
+      <p className="mt-1 font-mono text-[11px] leading-4 text-ink-3">
+        Computed by code from your job description, not an AI opinion.
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono">
+        <span className="type-label">Before</span>
+        <span className="text-[18px] leading-6 text-ink-2">{coverage.before.toFixed(1)}</span>
+        <span aria-hidden="true" className="text-ink-3">
+          {"\u2192"}
+        </span>
+        <span className="type-label">After</span>
+        <span className="text-[24px] leading-7 text-ink">{coverage.after.toFixed(1)}</span>
+        {gain !== 0 && (
+          <span className={gain > 0 ? "text-green" : "text-red-pen"}>
+            {gain > 0 ? "+" : ""}
+            {gain.toFixed(1)}
+          </span>
+        )}
+      </div>
+
+      <div className="relative mt-3 h-2 rounded-[4px] bg-paper-sunken" aria-hidden="true">
+        <div
+          className="absolute inset-y-0 left-0 rounded-[4px] bg-highlighter"
+          style={{ width: `${clampPct(coverage.after)}%` }}
+        />
+        <div
+          className="absolute -inset-y-0.5 w-[2px] bg-ink"
+          style={{ left: `calc(${clampPct(coverage.before)}% - 1px)` }}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-5 md:grid-cols-2">
+        <div>
+          <div className="type-label">Matched now</div>
+          {coverage.matched.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-3">None yet.</p>
+          ) : (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {coverage.matched.map((k) => (
+                <li key={k.term}>
+                  <span className="inline-block rounded-[4px] border border-green/60 px-1.5 py-0.5 font-mono text-[11px] leading-4 text-green">
+                    {k.term}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <div className="type-label">Still missing</div>
+          {coverage.missing.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-3">None.</p>
+          ) : (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {coverage.missing.map((k) => (
+                <li key={k.term}>
+                  <span className="inline-block rounded-[4px] border border-red-pen/50 px-1.5 py-0.5 font-mono text-[11px] leading-4 text-red-pen">
+                    {k.term}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </Sheet>
+  );
 }
 
 /* Wrap each unverified detail occurrence in the rewritten resume with a
@@ -422,6 +517,8 @@ export default function AnalyzePage() {
                 </div>
               </div>
             </Sheet>
+
+            {result.coverage && <CoverageSheet coverage={result.coverage} />}
 
             {/* 2. The roast */}
             <div className="reveal" style={dly(1)}>

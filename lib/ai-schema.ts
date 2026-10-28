@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// Shared keyword-entry contract with lib/coverage.ts (Term).
+export const jdKeywordSchema = z.object({
+  term: z.string().min(1).max(40),
+  weight: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+});
+
 export const analysisResultSchema = z.object({
   matchScore: z.number().int().min(0).max(100),
   roast: z.string().min(1),
@@ -20,6 +26,9 @@ export const analysisResultSchema = z.object({
     }),
   ).min(1),
   rewrittenResume: z.string().min(1),
+  // The most important job-description terms, weight 1-3 by importance.
+  // Consumed by lib/coverage.ts; scored deterministically by code afterwards.
+  jdKeywords: z.array(jdKeywordSchema).max(25).optional(),
   // Server-derived optional fields (never produced by the model itself).
   estimatedAfterScore: z.number().int().min(0).max(100).optional(),
   unverifiedDetails: z.array(z.string()).optional(),
@@ -66,6 +75,19 @@ export const analysisJsonSchema = {
         },
       },
       rewrittenResume: { type: "string" },
+      jdKeywords: {
+        type: "array",
+        maxItems: 25,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            term: { type: "string" },
+            weight: { type: "integer", enum: [1, 2, 3] },
+          },
+          required: ["term", "weight"],
+        },
+      },
     },
     required: [
       "matchScore",
@@ -76,6 +98,7 @@ export const analysisJsonSchema = {
       "missingKeywords",
       "recommendations",
       "rewrittenResume",
+      "jdKeywords",
     ],
   },
 };

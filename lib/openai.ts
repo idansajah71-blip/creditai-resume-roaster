@@ -29,6 +29,7 @@ Include:
 - missingKeywords: up to 5 missing keywords
 - recommendations: array of {section, advice}
 - rewrittenResume: rewritten resume preserving actual experience (never fabricate)
+- jdKeywords: up to 25 entries {term, weight}: the most important skills, tools, qualifications and domain terms the JOB DESCRIPTION asks for. Copy each term EXACTLY from the job description wording; no inventions, no generic soft-skill filler. weight 3 = explicitly required or must-have, 2 = strongly requested, 1 = mentioned as a plus.
 Every fact in the rewritten resume must come from the original resume. Do not invent companies, dates, numbers, or achievements.`;
 
   const langLine = options.language
@@ -62,7 +63,8 @@ Every fact in the rewritten resume must come from the original resume. Do not in
         ],
         response_format: { type: "json_schema", json_schema: analysisJsonSchema },
         temperature: 0.4,
-        max_tokens: 2000,
+        // jdKeywords (up to 25 entries) adds output volume; avoid truncation.
+        max_tokens: 2400,
       }),
       signal: controller.signal,
     });
@@ -83,7 +85,7 @@ Every fact in the rewritten resume must come from the original resume. Do not in
           ],
           response_format: { type: "json_object" },
           temperature: 0.4,
-          max_tokens: 2000,
+          max_tokens: 2400,
         }),
         signal: controller.signal,
       });
