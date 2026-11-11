@@ -5,6 +5,12 @@ import { grantCredits } from "@/lib/credits";
 
 export async function POST(request: Request) {
   const raw = await request.text();
+  // PayPal webhook payloads are small JSON documents. Anything this large is
+  // not a legitimate event, so reject it before spending cycles on
+  // verification (a cheap DoS guard on an unauthenticated endpoint).
+  if (raw.length > 256 * 1024) {
+    return NextResponse.json({ success: false }, { status: 413 });
+  }
   let event: {
     id?: string;
     event_type?: string;

@@ -6,6 +6,7 @@ type JobRow = {
   status: string;
   model: string | null;
   credits_cost: number;
+  match_score: number | null;
   result: string | null;
   error: string | null;
   created_at: string;
@@ -13,6 +14,9 @@ type JobRow = {
 };
 
 function scoreOf(j: JobRow): number | null {
+  // First choice: the first-class column (migration 0012). Rows written
+  // before it existed (or with an unparsable result) fall back to the JSON.
+  if (typeof j.match_score === "number") return j.match_score;
   if (!j.result) return null;
   try {
     const parsed = JSON.parse(j.result) as { matchScore?: number };
@@ -36,10 +40,14 @@ const numTd = "px-4 py-3 font-mono text-right text-ink whitespace-nowrap";
 
 export default async function HistoryPage() {
   const supabase = await createClient();
+  // Bounded: the newest 100 rows. match_score comes from its own column
+  // (migration 0012), so the page no longer ships the full result JSON; older
+  // rows remain in the database, just not on this page.
   const { data: jobs } = await supabase
     .from("ai_jobs")
-    .select("id, status, model, credits_cost, result, error, created_at, completed_at")
-    .order("created_at", { ascending: false });
+    .select("id, status, model, credits_cost, match_score, result, error, created_at, completed_at")
+    .order("created_at", { ascending: false })
+    .limit(100);
 
   const rows = ((jobs ?? []) as JobRow[]);
 

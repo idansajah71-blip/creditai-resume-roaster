@@ -1,0 +1,10 @@
+Staff Backend Engineer
+
+Responsibilities
+- Own a distributed event platform and its reliability
+- Lead incident response and mentor engineers
+- Define cloud architecture with security and observability
+
+Requirements
+Skills: Go, Kubernetes, Kafka, PostgreSQL, Terraform, AWS, Prometheus, Grafana, distributed systems
+Experience: 6+ years backend engineering, production on-call, technical leadership

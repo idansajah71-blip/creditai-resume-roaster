@@ -38,13 +38,14 @@ describe("GET /api/health", () => {
     const res1 = await GET();
     expect(res1.status).toBe(200);
     const json1 = await res1.json();
-    expect(Object.keys(json1)).toEqual(["ok", "checks"]);
+    expect(Object.keys(json1)).toEqual(["ok", "checks", "cost"]);
     expect(json1.checks).toEqual({
       database: true,
       paypal: true,
       openai_configured: false,
       webhook_configured: false,
     });
+    expect(json1.cost).toEqual({ avg_cost_usd: null, cost_sample_size: 0 });
     // Booleans only.
     for (const v of Object.values(json1.checks)) expect(typeof v).toBe("boolean");
     expect(json1.ok).toBe(false); // config checks false in test env

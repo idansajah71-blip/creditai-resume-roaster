@@ -93,6 +93,20 @@ function CreditsInner() {
     newIdem();
   }, [newIdem]);
 
+  useEffect(() => {
+    // Prefill from the guarantee deep-link (analyze verdict sheet): the refund
+    // desk itself keeps deciding eligibility deterministically.
+    const rc = params.get("refund_credits");
+    const rr = params.get("refund_reason");
+    if (rc && /^\d+$/.test(rc)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRefundCredits(rc);
+    }
+    if (rr) {
+      setRefundReason(rr);
+    }
+  }, [params]);
+
   async function loadSummary() {
     try {
       const res = await fetch("/api/paypal/refunds");
@@ -122,7 +136,7 @@ function CreditsInner() {
     if (token && !capturedRef.current) {
       capturedRef.current = true;
       setLoading(true);
-      fetch(`/api/paypal/orders/${token}/capture`, { method: "POST" })
+      fetchWithTimeout(`/api/paypal/orders/${token}/capture`, { method: "POST" })
         .then(async (res) => {
           const json = await res.json();
           if (!res.ok) throw new Error(json.message || "capture failed");

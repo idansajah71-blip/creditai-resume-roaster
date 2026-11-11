@@ -12,7 +12,7 @@ No AI-generated content reaches end users except the validated model output abov
 
 ## In development (build time)
 
-- OpenCode assistant (GLM): code scaffolding, refactors, test generation (62 vitest tests), migration/SQL drafting under review, and documentation drafting for README/DEVPOST/security docs.
+- OpenCode assistant (GLM): code scaffolding, refactors, test generation (291 vitest tests), migration/SQL drafting under review, and documentation drafting for README/DEVPOST/security docs.
 - No CI automation depends on AI at build time; tests and builds are deterministic.
 
 ## Operational notes

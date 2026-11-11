@@ -16,7 +16,7 @@ CreditAI takes a resume (text or PDF) and a job description and returns, in one 
 - A "Fabrication check" card: a deterministic diff of the rewrite against your original resume flags every detail the AI added (numbers with units, percentages, money, years, invented company-style names). If too many flagged details appear, the rewrite is retried once with stricter instructions at no extra credit.
 - Language detection: an Indonesian resume gets Indonesian output, an English one gets English.
 
-Billing uses atomic credits (1 per analysis). Credits are bought with PayPal Sandbox (10 for $1.00, 50 for $4.00, 100 for $7.00) through inline buttons or a redirect fallback. Unused credits can be partially refunded through an AI refund agent that operates within deterministic guardrails; the ledger in /transactions shows every grant, debit, and refund compensation. A public /api/health endpoint and the /judges page show live system status.
+Billing uses atomic credits (1 per analysis). Credits are bought with PayPal Sandbox (10 for $1.00, 50 for $4.00, 100 for $7.00) through inline buttons or a redirect fallback. Unused credits can be partially refunded: eligibility and the refund amount are decided by deterministic TypeScript code, an AI agent only drafts the customer-facing message, and the ledger in /transactions shows every grant, debit, and refund compensation. A public /api/health endpoint and the /judges page show live system status.
 
 ## How we built it
 
@@ -41,14 +41,14 @@ Key implementation decisions:
 - Every credit mutation is atomic and idempotent, with a ledger a human can audit line by line.
 - Complete payment flows built out on PayPal Sandbox paths: capture, webhook grant, partial refund, refund webhook deduplication, and recovery paths for ambiguous captures; covered by the automated suite (PayPal mocked in tests). A manual end-to-end verification checklist ships in the README.
 - Privacy defaults as strong as the accounting: no retention by default, scheduled purge, user-triggered deletion, and a delete route that cannot unbalance the books.
-- 82 automated tests, including regression tests for the exact failure modes that motivated the design (insufficient credits, double capture, duplicate webhooks, malformed AI output).
+- 291 automated tests, including regression tests for the exact failure modes that motivated the design (insufficient credits, double capture, duplicate webhooks, malformed AI output).
 
 ## What we learned
 
 - The hard part of "AI in the loop" is not the prompt; it is everything around it: idempotency, validation, rate limits, and auditability. The model gets one narrow, schema-constrained job.
 - Deterministic guardrails beat clever prompts for anything involving money or facts.
 - Webhooks are a new, late-arriving source of truth that must be reconciled with synchronous paths, not trusted separately.
-- Small eval harnesses (5 real fixtures) expose prompt drift much faster than staring at outputs in the UI.
+- Small eval harnesses (8 real fixture pairs: good, weak, keyword-stuffing, very short, and an Indonesian resume against an English job description) expose prompt drift much faster than staring at outputs in the UI.
 
 ## What's next
 
@@ -64,5 +64,5 @@ next.js, typescript, react, tailwind css 4, supabase (postgres + auth), zod, ope
 
 ## Tools used
 
-Product AI: OpenAI `gpt-4o-mini`.
+Product AI: OpenAI Chat Completions (`gpt-4o-mini` default, env-overridable via `OPENAI_MODEL`).
 Development AI: OpenCode assistant (GLM) for scaffolding, refactoring, test generation, and documentation review.

@@ -17,11 +17,11 @@
 - Webhook signature verified via PayPal `POST /v1/notifications/verify-webhook-signature` before processing; unverified events are rejected.
 
 ## Abuse, quota and cost controls
-- `AI_DAILY_LIMIT_PER_USER` (default 20) and `AI_GLOBAL_DAILY_LIMIT` (default 500) daily analysis caps.
+- `AI_DAILY_LIMIT_PER_USER` (default 20) and `AI_GLOBAL_DAILY_LIMIT` (default 500) daily analysis caps; PDF extraction is capped at 10 uploads per user per 5 minutes (per-instance in-memory limiter, same limitation as item 1 below).
 - `DEMO_SESSIONS_DAILY_LIMIT` (default 200) plus 3 sessions/IP/hour via `POST /api/demo/session` (IP salted hash, `DEMO_IP_SALT`).
 - `PAYPAL_MAX_ORDERS_PER_DAY` (default 10) order creation cap.
 - Refunds capped at 3 requests per 30 days; per-user rate limit on writes; deterministic deny happens before the refund agent is ever called.
-- OpenAI calls carry `max_tokens` limits (2000 analysis, 20 scoring, 300 refund agent) and 60s/30s timeouts.
+- OpenAI calls carry `max_tokens` limits (2400 analysis, 20 scoring, 300 refund agent) and 60s/30s timeouts.
 
 ## Ephemeral demo accounts
 - `/api/demo/session` creates a fresh account with 5 credits (expires in 24h); demo users and session rows are removed by `cleanup_demo_data()` (scheduled by pg_cron).
@@ -35,7 +35,7 @@
 
 ## Input handling
 - Zod schemas with explicit size limits on every request body (resume 20k chars, JD 10k chars, ids/keys length-limited).
-- PDF extraction processes uploads in memory (pdf-parse); files are never written to disk.
+- PDF extraction processes uploads in memory (pdf-parse); files are never written to disk. Uploads are validated by declared MIME type, 5MB size cap, and actual content (PDF magic bytes); extracted text is bounded to the resume input limit; a parser failure on a malformed document is reported to the client as a 422 input problem, not a server failure.
 
 ## Known gaps (accepted for the demo)
 1. Rate limiters are in-memory + database counters; horizontal scale needs a shared store (Upstash) for exactness.

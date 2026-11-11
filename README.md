@@ -1,6 +1,6 @@
 # CreditAI Resume Roaster
 
-CreditAI is a resume tool that proves its claims: it analyzes your resume against a real job description with real OpenAI inference, shows a before/after match estimate, and diffs the rewritten resume against your original to flag every fact the AI added. Billing is atomic credit-based. PayPal Sandbox flows (orders, captures, partial refunds, verified webhooks) are implemented and covered by the automated test suite (vitest, with PayPal/OpenAI mocked in tests only); a manual verification checklist is at the end of this README.
+CreditAI is a resume tool that proves its claims: it analyzes your resume against a real job description with real model inference, shows a before/after match estimate, and diffs the rewritten resume against your original to flag every fact the AI added. Billing is atomic credit-based. PayPal Sandbox flows (orders, captures, partial refunds, verified webhooks) are implemented and covered by the automated test suite (vitest, with PayPal/model calls mocked in tests only); a manual verification checklist is at the end of this README.
 
 ## Problem and audience
 
@@ -25,7 +25,7 @@ Placeholders (add real captures):
 
 ## Features
 
-- Real OpenAI inference with structured JSON output (no mock data in production paths).
+- Real model inference with structured JSON output (OpenAI-compatible; no mock data in production paths).
 - Before/after match estimate ("AI estimate, not a guarantee") included in the same credit.
 - Deterministic fabrication guard: the rewrite is diffed against your original resume; flagged details are listed with chips for verification. One automatic stricter rewrite retry if too many details are flagged.
 - Indonesian/English detection; answers follow the resume's language.
@@ -33,6 +33,7 @@ Placeholders (add real captures):
 - PayPal Sandbox payments: inline SDK buttons with a redirect fallback, server-side prices only, idempotent orders and captures.
 - Partial refunds of unused credits through the PayPal Refunds API with ledger compensation; AI refund agent inside deterministic guardrails.
 - Verified webhooks (PAYMENT.CAPTURE.COMPLETED and PAYMENT.CAPTURE.REFUNDED) with ledger-level deduplication.
+- Outcome guarantee: every analysis is graded against a deterministic quality bar; a failed analysis is retried once for free and then refunded automatically with an exact explanation. See "Outcome guarantee" below.
 - Privacy by default: resume text is not stored unless you opt in; otherwise only character counts are stored; one-click deletion of analysis data; scheduled purge of stale inputs (30 days); public /privacy notice.
 - User-specific analysis history and full transaction ledger; PDF upload for resumes.
 - Public system status endpoint (/api/health) and judge quick-start page (/judges).
@@ -82,7 +83,21 @@ Webhooks handled: `PAYMENT.CAPTURE.COMPLETED` (credit grant, idempotent by captu
 - Fabrication guard (`lib/fabrication-guard.ts`): deterministic extraction of numbers with units, percentages, money, years, and capitalized multi-word names from the rewrite, matched against the original resume (normalizing thousand separators and money formats); job description mentions count as allowed only on lines with a skills context. More than 2 flagged details triggers one automatic rewrite retry with a stricter instruction, at no extra credit.
 - Refund agent (`lib/refund-agent.ts`): "AI proposes, code disposes." The agent never decides: once the deterministic checks pass (refundable = purchased - refunded capped per order, max 3 refund requests per 30 days, orders within the 14-day window, allocation in integer cents in `lib/refund-math.ts`), the server approves and the model only writes the 2-3 sentence customer message. Denials are purely deterministic (limit reached, not enough unused credits, window expired) and happen before any AI call. If the model call fails, a fixed fallback message is used and the refund still processes.
 - Language handling (`lib/language.ts`): dictionary heuristic (no dependency) sets the output language to match the resume.
-- Evaluation harness: `npm run eval` runs 5 fixture pairs against the real model and reports the average unverified-detail count and average score delta (costs real API money; not run in CI; see docs/EVALUATION.md).
+- Evaluation harness: `npm run eval` runs the guarantee fixture pairs through the real analysis pipeline and writes [docs/EVALUATION.md](docs/EVALUATION.md) (costs real API money; never run in CI).
+
+## Outcome guarantee: how it is measured and its limits
+
+Every analysis is graded by code, never by the model, after a single automatic rewrite retry at no extra credit. The bar has three parts:
+
+- the fabrication guard (`lib/fabrication-guard.ts`) reports no unverified details in the rewrite;
+- keyword coverage (`lib/coverage.ts`) rises by at least the configured minimum gain, or the original resume is already at or above the configured "already strong" bar and the rewrite does not lower it;
+- the rewrite adds no more than the configured number of new keywords.
+
+Thresholds are env-configurable (`GUARANTEE_MIN_GAIN`, `GUARANTEE_ALREADY_STRONG`, `GUARANTEE_MAX_ADDED_TERMS`). If the bar fails, the verdict sheet prints the exact reasons and the reserved credit is returned automatically through the SQL refund function, idempotently and within the configured daily cap. The user keeps the result either way.
+
+The measurement lives in [docs/EVALUATION.md](docs/EVALUATION.md). The harness ran on 2026-10-29 against `gemini-3.5-flash-lite`: 8 of 8 fixture pairs completed, the guarantee was met on 1 of 8, average coverage gain was 10.5 points, and the average estimated model cost was $0.000000 per analysis (free tier). The harness is never run in CI.
+
+Limits: coverage is a heuristic lexical measure over model-extracted job keywords, the synonym map is deliberately short, and a met stamp means the deterministic bar passed - not that the rewrite is factually perfect, that the model behaves the same on every resume, or that a recruiter will respond. A very short resume against an unrelated job description usually ends refunded, by design.
 
 ## AI tools used
 
@@ -91,11 +106,11 @@ Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrit
 ## Setup
 
 1. `npm install`
-2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql`.
+2. Create a Supabase project; run migrations from `supabase/migrations/` in order in the SQL editor: `0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql`, `0010_guarantee_refund.sql`, `0011_agent_policy.sql`, `0012_match_score.sql`.
 3. Copy `.env.example` to `.env.local` and fill values (Supabase URL/anon/service keys, OpenAI key, PayPal sandbox client id/secret/webhook id, app URL, repo URL, cost caps, salt).
 4. PayPal Sandbox: create an app at developer.paypal.com, set its webhook URL to `https://<your-domain>/api/paypal/webhook`, subscribe to both `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`, copy the webhook id into `PAYPAL_WEBHOOK_ID`, and copy client id/secret into `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` (plus `NEXT_PUBLIC_PAYPAL_CLIENT_ID` for inline buttons).
 5. Schedule the input purge (DEPLOYMENT.md, pg_cron): `select cron.schedule('purge-job-inputs','45 2 * * *',$$select public.purge_old_job_inputs(interval '30 days');$$);` and demo cleanup on the same page.
-6. `npm run dev` (local) or `npm run build && npm start`. Tests: `npm test` (82 tests, vitest; PayPal/OpenAI are mocked in tests only). Typecheck: `npm run typecheck`. Lint: `npm run lint`.
+6. `npm run dev` (local) or `npm run build && npm start`. Tests: `npm test` (vitest; PayPal/OpenAI are mocked in tests only). Typecheck: `npm run typecheck`. Lint: `npm run lint`.
 
 ## Security and idempotency
 
@@ -104,12 +119,17 @@ Product: OpenAI Chat Completions (`gpt-4o-mini` by default) for analysis, rewrit
 - Signup grants: every new account receives 3 free starter credits (migration 0009 `grant_signup_credits` trigger, idempotent ledger key `signup:<user id>`, insert-safe inside an EXCEPTION block). Trade-off: free credits are a bounded abuse surface, and spend is capped by the ordinary rate limits `AI_DAILY_LIMIT_PER_USER` and `AI_GLOBAL_DAILY_LIMIT`, so bulk fake signups can only consume the global daily analysis budget; the grant itself never blocks account creation.
 - Orders, captures, grants, refunds, and webhook events are idempotent (ledger keys, `PayPal-Request-Id`, unique webhook event ids).
 - Rate limits: per-user daily analysis cap, global daily cap, 3 demo sessions/IP/hour, 3 refund requests/30 days, PayPal order cap per day.
+- Guarantee refunds: idempotent SQL RPC with row locks; only succeeded jobs whose reservation was consumed; the daily automatic-refund cap is enforced in SQL.
 - Privacy: no retention by default (character counts only), one-click deletion on the dashboard, scheduled 30-day purge, public /privacy notice.
 
 ## Limitations (honest)
 
 - Payments are Sandbox only; live mode is supported by config (`PAYPAL_ENV=live`) but is not to be trusted without your own QA and PayPal policies.
 - LLM output can still drift in free-text fields; the fabrication guard is a heuristic verifier, not a fact-checker.
+- The guarantee bar measures keyword coverage (word-boundary + a short synonym map) and flagged details; it does not judge reasoning quality, writing style, or whether the rewrite actually "reads well". A met stamp means the measurable bar passed.
+- Coverage gain alone cannot make a weak resume strong: a very short resume against an unrelated job description usually ends REFUNDED, by design.
+- The reconcile helper cannot re-derive the added-terms check after input redaction (only coverage numbers and unverified details persist), so a reconciled late check uses the persisted numbers and the fabrication flag only.
+- The PayPal refund desk computes refundability from order counters and does not account for credits already returned by automatic guarantee refunds; a user could request cash for a credit the guarantee already returned in-app. UI and deep links avoid steering users there; desk guardrails still cap manual requests.
 - Rate limiters are in-memory + database-backed; horizontal scale needs a shared store (e.g. Upstash) for full accuracy.
 - The demo account flow expects Supabase email confirmation to be disabled in the project settings.
 - The public URL is not verified in this environment (no deployment performed from here); `npm run build` must pass locally.
@@ -121,6 +141,8 @@ Filled in by the maintainer after testing the deployed URL (all unticked until t
 - [ ] Sign-up works; demo session creates an account with 5 credits.
 - [ ] Buying a credit package with a Sandbox buyer credits the account after the capture (webhook path included).
 - [ ] Analysis consumes 1 credit, returns evidence-based score/roast/rewrite, and appears in history.
+- [ ] A deliberately bad pair (very short resume, unrelated job) ends in CREDIT REFUNDED with a stamp, the reasons, and a ledger entry type guarantee_refund; the balance includes the returned credit.
+- [ ] A good pair (sample data) ends in GUARANTEE MET.
 - [ ] Partial refund of unused credits processes on PayPal Sandbox and the ledger shows the compensation entry.
 - [ ] The `PAYMENT.CAPTURE.REFUNDED` webhook does not double-deduct credits for an app-initiated refund.
 - [ ] One-click data deletion empties analysis history and counts.

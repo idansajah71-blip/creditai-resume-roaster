@@ -155,9 +155,9 @@ export default function JudgesPage() {
             <Step n={4} title="Request a partial refund and see it in Transactions">
               <p className={stepBody}>
                 Still on /credits, use the refund panel for your purchase (e.g. refund 5 of 10 unused
-                credits). Answer the refund questions: the AI refund agent proposes a decision within
-                deterministic guardrails, the PayPal Refunds API is called server-side, and the ledger
-                compensates your credit balance atomically.
+                credits). Answer the refund questions: eligibility and the amount are decided by
+                deterministic code, the PayPal Refunds API is called server-side, a model only drafts the
+                customer message, and the ledger compensates your credit balance atomically.
               </p>
             </Step>
           </li>

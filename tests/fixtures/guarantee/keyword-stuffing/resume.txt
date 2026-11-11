@@ -1,0 +1,14 @@
+Keyword Maximizer
+Senior Everything Engineer
+
+SKILLS
+Kubernetes, Terraform, AWS, Go, Python, Kafka, PostgreSQL, Docker, CI/CD, microservices, observability, distributed systems, leadership, mentoring, on-call, incident response, cloud architecture, serverless, GraphQL, React, TypeScript, Node.js, Redis, Prometheus, Grafana
+
+EXPERIENCE
+Engineer, Various Companies (2015 to 2026)
+- Used many technologies
+- Delivered projects
+- Worked with teams
+
+EDUCATION
+B.Sc. Computer Science

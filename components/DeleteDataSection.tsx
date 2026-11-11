@@ -7,10 +7,10 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 // Privacy control: deletes the user's analysis history (ai_jobs rows).
 // Credit ledger and payment records are kept for financial integrity.
 // Rendered as a quiet bottom section: rule, no sheet, muted text.
+// Success reloads the page; failures stay visible as an inline alert.
 export default function DeleteDataSection() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
@@ -18,18 +18,20 @@ export default function DeleteDataSection() {
     setError(null);
     try {
       const res = await fetch("/api/account/delete-data", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.message || "Delete failed");
-      } else {
-        setDone(json.data.deleted ?? 0);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        setError(json?.message || "Delete failed. You can try again.");
+        setOpen(false);
+        return;
       }
+      // Success: reload so every server-rendered view (dashboard stats,
+      // history) reflects the emptied history.
+      window.location.reload();
     } catch {
-      setError("Network error");
+      setError("Network error. You can try again.");
+      setOpen(false);
     } finally {
       setBusy(false);
-      setOpen(false);
-      window.location.reload();
     }
   }
 
@@ -46,7 +48,6 @@ export default function DeleteDataSection() {
           </p>
         </div>
         <div className="shrink-0">
-          {done !== null && !error && <span className="block text-sm font-medium text-green">Deleted {done} analyses.</span>}
           {error && (
             <p className="text-sm font-medium text-red-pen" role="alert">
               {error}

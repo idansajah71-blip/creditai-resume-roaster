@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccessToken } from "@/lib/paypal";
+import { estimateCostUsd } from "@/lib/model-cost";
 
 // Public system status: booleans only, never secrets or error internals.
 // database  = a trivial query against profiles (head request, one column).
 // paypal    = a real Sandbox OAuth token fetch (proves credentials + reachability).
 // openai_*  = env presence only (cheap; no API call, no spend).
+// cost      = average list-price estimate over the most recent succeeded jobs
+//             that have persisted prompt/completion token counters.
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const CACHE_MS = 30_000;
 const OP_TIMEOUT_MS = 5000;
+const COST_SAMPLE_SIZE = 50;
 
 type Checks = {
   database: boolean;
@@ -19,7 +23,12 @@ type Checks = {
   webhook_configured: boolean;
 };
 
-type Cached = { at: number; checks: Checks };
+type CostMetrics = {
+  avg_cost_usd: number | null;
+  cost_sample_size: number;
+};
+
+type Cached = { at: number; checks: Checks; cost: CostMetrics };
 
 // PayPal credentials missing is a config failure, not a reachability failure;
 // /api/health reports paypal:false with a short reason so operators see why.
@@ -50,9 +59,39 @@ async function paypalConfigReason(): Promise<string | null> {
   return null;
 }
 
-async function runChecks(): Promise<Checks> {
+async function averageCost(): Promise<CostMetrics> {
+  try {
+    const service = createServiceClient();
+    const { data, error } = await service
+      .from("ai_jobs")
+      .select("prompt_tokens, completion_tokens")
+      .eq("status", "succeeded")
+      .not("prompt_tokens", "is", null)
+      .not("completion_tokens", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(COST_SAMPLE_SIZE);
+    if (error || !data) return { avg_cost_usd: null, cost_sample_size: 0 };
+
+    const costs = (data as { prompt_tokens: number | null; completion_tokens: number | null }[])
+      .filter(
+        (row) =>
+          typeof row.prompt_tokens === "number" && typeof row.completion_tokens === "number",
+      )
+      .map((row) => estimateCostUsd(row.prompt_tokens as number, row.completion_tokens as number));
+    if (costs.length === 0) return { avg_cost_usd: null, cost_sample_size: 0 };
+    return {
+      avg_cost_usd: costs.reduce((sum, cost) => sum + cost, 0) / costs.length,
+      cost_sample_size: costs.length,
+    };
+  } catch {
+    // A metrics failure must never take the health check down.
+    return { avg_cost_usd: null, cost_sample_size: 0 };
+  }
+}
+
+async function runChecks(): Promise<{ checks: Checks; cost: CostMetrics }> {
   const missingCreds = await paypalConfigReason();
-  const [database, paypal] = await Promise.all([
+  const [database, paypal, cost] = await Promise.all([
     withTimeout(
       (async () => {
         const service = createServiceClient();
@@ -62,6 +101,7 @@ async function runChecks(): Promise<Checks> {
       false,
     ),
     missingCreds ? Promise.resolve(false) : withTimeout(getAccessToken().then(() => true), false),
+    averageCost(),
   ]);
 
   const checks: Checks = {
@@ -71,18 +111,23 @@ async function runChecks(): Promise<Checks> {
     webhook_configured: Boolean(process.env.PAYPAL_WEBHOOK_ID),
   };
   paypalReason = !checks.paypal && missingCreds ? missingCreds : null;
-  return checks;
+  return { checks, cost };
 }
 
 export async function GET() {
   const now = Date.now();
   if (!cached || now - cached.at > CACHE_MS) {
-    const checks = await runChecks();
-    cached = { at: now, checks };
+    const result = await runChecks();
+    cached = { at: now, ...result };
   }
   const c = cached.checks;
   const ok = c.database && c.paypal && c.openai_configured && c.webhook_configured;
-  const response: { ok: boolean; checks: Checks; paypal_reason?: string } = { ok, checks: c };
+  const response: {
+    ok: boolean;
+    checks: Checks;
+    cost: CostMetrics;
+    paypal_reason?: string;
+  } = { ok, checks: c, cost: cached.cost };
   if (!c.paypal && paypalReason) {
     response.paypal_reason = paypalReason;
   }

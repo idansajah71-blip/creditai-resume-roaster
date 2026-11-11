@@ -1,0 +1,11 @@
+Data Analyst - Product
+
+Responsibilities
+- Build SQL models and dashboards for product metrics
+- Design experiments and analyze user behavior
+- Present findings to product and engineering teams
+
+Requirements
+Skills: SQL, Python, Tableau, A/B testing, statistics
+Experience: 2+ years in a data analyst role
+Nice to have: product analytics, dbt, BigQuery

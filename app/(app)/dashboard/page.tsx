@@ -20,22 +20,24 @@ export default async function DashboardPage() {
 
   const { data: jobs } = await supabase
     .from("ai_jobs")
-    .select("id, status, credits_cost, result, created_at")
+    .select("id, status, credits_cost, match_score, result, created_at")
     .order("created_at", { ascending: false })
     .limit(5);
 
-  type JobRow = { id: string; status: string; result: string | null; credits_cost: number; created_at: string };
+  type JobRow = { id: string; status: string; result: string | null; match_score: number | null; credits_cost: number; created_at: string };
   const typedJobs = (jobs ?? []) as JobRow[];
-  const lastScore =
-    typedJobs.find((j) => j.result)?.result
-      ? (() => {
+  const scored = typedJobs.find((j) => typeof j.match_score === "number" || j.result);
+  const lastScore = scored
+    ? typeof scored.match_score === "number"
+      ? scored.match_score
+      : (() => {
           try {
-            return JSON.parse(typedJobs.find((j) => j.result)!.result as string).matchScore;
+            return JSON.parse(scored.result as string).matchScore as number;
           } catch {
             return "-";
           }
         })()
-      : "-";
+    : "-";
 
   return (
     <div className="space-y-10">

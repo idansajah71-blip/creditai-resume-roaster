@@ -20,6 +20,18 @@ type Match = { requirement: string; status: "met" | "partial" | "missing"; evide
 
 type Term = { term: string; weight: 1 | 2 | 3 };
 
+type GuaranteeReason = {
+  code: "fabrication" | "low_gain" | "too_many_added_terms";
+  message: string;
+  detail: Record<string, unknown>;
+};
+
+type Guarantee = {
+  status: "met" | "refunded" | "waived" | "not_applicable";
+  reasons: GuaranteeReason[];
+  creditsRefunded: number;
+};
+
 type Coverage = {
   before: number;
   after: number;
@@ -41,6 +53,7 @@ type AnalysisResult = {
   rewrittenResume: string;
   jdKeywords?: Term[];
   coverage?: Coverage;
+  guarantee?: Guarantee;
   estimatedAfterScore?: number;
   unverifiedDetails?: string[];
   language?: "en" | "id";
@@ -132,6 +145,136 @@ function CoverageSheet({ coverage }: { coverage: Coverage }) {
         </div>
       </div>
     </Sheet>
+  );
+}
+
+/* The outcome-guarantee sheet: a stamped verdict plus the exact reasons
+   computed by code. Refund statuses carry their plain-language outcome, and
+   when no automatic credit return happened the deterministic PayPal refund
+   desk is offered as the alternative. */
+function GuaranteeSheet({ guarantee, jobId }: { guarantee: Guarantee; jobId: string | null }) {
+  const stamp: Record<Guarantee["status"], { label: string; tone: "green" | "red" | "amber" }> = {
+    met: { label: "Guarantee met", tone: "green" },
+    refunded: { label: "Credit refunded", tone: "red" },
+    waived: { label: "Refund limit reached", tone: "amber" },
+    not_applicable: { label: "Refund pending", tone: "amber" },
+  };
+  const s = stamp[guarantee.status];
+  const cashBackEligible = guarantee.status === "waived" || guarantee.status === "not_applicable";
+  const shortId = jobId ? jobId.slice(0, 8) : "unknown";
+  const deskLink = `/credits?refund_credits=1&refund_reason=${encodeURIComponent(
+    `Guarantee not met for analysis ${shortId}`,
+  )}`;
+
+  return (
+    <Sheet className="reveal" style={{ animationDelay: "90ms" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Stamp tone={s.tone}>{s.label}</Stamp>
+          {guarantee.creditsRefunded > 0 && (
+            <span className="font-mono text-[18px] leading-6 text-green">
+              +{guarantee.creditsRefunded} credit
+            </span>
+          )}
+        </div>
+        <a
+          href="#guarantee-explainer"
+          className="min-h-[44px] py-2 text-sm font-medium text-blue underline-offset-2 hover:underline md:min-h-0 md:py-0"
+        >
+          How this is measured
+        </a>
+      </div>
+
+      {guarantee.reasons.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {guarantee.reasons.map((r, i) => (
+            <li key={r.code + String(i)} className="border-l-2 border-red-pen pl-3 text-sm leading-5 text-ink-2">
+              {r.message}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {guarantee.status === "refunded" && (
+        <MarginNote className="mt-4">Your credit was returned. You can keep this result.</MarginNote>
+      )}
+      {guarantee.status === "waived" && (
+        <MarginNote className="mt-4">
+          The guarantee was not met this time. Automatic refunds are limited per day, so nothing was returned
+          automatically; your unused purchased credits can still be refunded manually.
+        </MarginNote>
+      )}
+      {guarantee.status === "not_applicable" && (
+        <MarginNote className="mt-4">
+          The automatic refund could not be confirmed for this analysis. Your credit was not returned yet; the check
+          may complete on your next visit.
+        </MarginNote>
+      )}
+      {guarantee.status === "met" && (
+        <MarginNote className="mt-4">
+          No invented details, a real coverage gain, and few added keywords. The rewrite passed the automatic quality
+          bar.
+        </MarginNote>
+      )}
+
+      {cashBackEligible && (
+        <div className="mt-4">
+          <a href={deskLink} className="btn btn-secondary inline-flex px-4 text-sm min-h-[44px] items-center">
+            Refund to PayPal instead
+          </a>
+          <p className="mt-1 font-mono text-[11px] leading-4 text-ink-3">
+            Opens the refund desk on /credits with 1 credit and the reason prefilled. Eligibility is decided there by
+            code.
+          </p>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/* Explainer anchored from the guarantee sheet: the actual bar, in plain
+   words, with the honest caveat that thresholds are defaults, not promises. */
+function GuaranteeExplainer() {
+  return (
+    <div id="guarantee-explainer" className="reveal scroll-mt-24">
+      <div className="rounded-[10px] border border-line bg-sheet p-5">
+        <h3 className="type-h3 text-ink">How the guarantee is measured</h3>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-ink-2">
+          <li className="flex gap-2.5">
+            <svg width="8" height="8" viewBox="0 0 8 8" className="mt-2 shrink-0" aria-hidden="true">
+              <circle cx="4" cy="4" r="3.5" fill="#2F6B4F" />
+            </svg>
+            The fabrication guard must find no invented details in the rewrite.
+          </li>
+          <li className="flex gap-2.5">
+            <svg width="8" height="8" viewBox="0 0 8 8" className="mt-2 shrink-0" aria-hidden="true">
+              <circle cx="4" cy="4" r="3.5" fill="#2F6B4F" />
+            </svg>
+            Keyword coverage must gain at least <span className="font-mono text-ink">10.0</span> points, or the
+            original resume already scored <span className="font-mono text-ink">85</span> or more and the rewrite
+            did not lower it.
+          </li>
+          <li className="flex gap-2.5">
+            <svg width="8" height="8" viewBox="0 0 8 8" className="mt-2 shrink-0" aria-hidden="true">
+              <circle cx="4" cy="4" r="3.5" fill="#2F6B4F" />
+            </svg>
+            The rewrite may add at most <span className="font-mono text-ink">2</span> new keywords.
+          </li>
+          <li className="flex gap-2.5">
+            <svg width="8" height="8" viewBox="0 0 8 8" className="mt-2 shrink-0" aria-hidden="true">
+              <circle cx="4" cy="4" r="3.5" fill="#2F6B4F" />
+            </svg>
+            If the bar fails, the rewrite is retried once at no extra credit; if it fails again, the credit is
+            refunded automatically (limit of 3 automatic refunds per day).
+          </li>
+        </ul>
+        <p className="mt-3 font-mono text-[11px] leading-4 text-ink-3">
+          Computed by code on every analysis. Thresholds above are the defaults; they are configurable
+          (GUARANTEE_MIN_GAIN, GUARANTEE_ALREADY_STRONG, GUARANTEE_MAX_ADDED_TERMS, GUARANTEE_DAILY_REFUND_LIMIT)
+          and the money side lives in auditable SQL.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -249,13 +392,19 @@ export default function AnalyzePage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadHistory();
+    loadHistory().catch(() => {
+      /* history is best-effort; the page still works without it */
+    });
     (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("profiles").select("credit_balance").eq("id", user.id).single();
-      setBalance(data?.credit_balance ?? 0);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from("profiles").select("credit_balance").eq("id", user.id).single();
+        setBalance(data?.credit_balance ?? 0);
+      } catch {
+        // Balance display falls back to "..." ; never blocks the form.
+      }
     })();
   }, []);
 
@@ -270,19 +419,36 @@ export default function AnalyzePage() {
   async function onPdfChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setProgress("Extracting PDF...");
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: form });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.message || "PDF extraction failed");
-      setProgress("");
+    // Client-side pre-checks mirror the server limits so an obviously wrong
+    // file never leaves the browser.
+    if (file.type !== "application/pdf") {
+      setError("Please choose a PDF file.");
+      e.target.value = "";
       return;
     }
-    setResumeText(json.data.text);
-    setFileName(file.name);
-    setProgress("");
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File too large (max 5MB).");
+      e.target.value = "";
+      return;
+    }
+    setProgress("Extracting PDF...");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: form });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        setError(json?.message || "PDF extraction failed");
+        return;
+      }
+      setResumeText(json.data.text as string);
+      setFileName(file.name);
+    } catch {
+      setError("PDF extraction failed. Try pasting the text instead.");
+    } finally {
+      setProgress("");
+      e.target.value = "";
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -301,18 +467,26 @@ export default function AnalyzePage() {
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ resumeText, jobDescription, idempotencyKey, retainInput }),
       });
-      const json = await res.json();
-      if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
         if (res.status === 402) setInsufficient(true);
-        setError(json.message || "Analysis failed");
+        setError(json?.message || "Analysis failed");
+        setLoading(false);
+        setProgress("");
+        return;
+      }
+      if (!json?.data?.jobId) {
+        setError("Analysis response was incomplete. Try again.");
         setLoading(false);
         setProgress("");
         return;
       }
       setInsufficient(false);
       setJobId(json.data.jobId);
-      setResult(json.data.result);
-      setBalance((b) => (b !== null ? Math.max(0, b - 1) : b));
+      setResult(json.data.result ?? null);
+      const refunded = Number(json.data.result?.guarantee?.creditsRefunded) || 0;
+      // A guarantee refund returns the reserved credit on top of the delta.
+      setBalance((b) => (b !== null ? Math.max(0, b - 1 + refunded) : b));
       loadHistory();
       router.refresh();
     } catch {
@@ -520,6 +694,8 @@ export default function AnalyzePage() {
 
             {result.coverage && <CoverageSheet coverage={result.coverage} />}
 
+            {result.guarantee && <GuaranteeSheet guarantee={result.guarantee} jobId={jobId} />}
+
             {/* 2. The roast */}
             <div className="reveal" style={dly(1)}>
               <h3 className="type-label">The roast</h3>
@@ -654,6 +830,11 @@ export default function AnalyzePage() {
                 ))}
               </ul>
             </div>
+
+            <Rule />
+
+            {/* 9. How the guarantee is measured (anchor target of the verdict sheet) */}
+            {result.guarantee && <GuaranteeExplainer />}
           </div>
         )}
 

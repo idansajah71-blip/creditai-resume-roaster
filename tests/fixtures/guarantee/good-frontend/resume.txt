@@ -1,0 +1,18 @@
+Sam Rivera
+Frontend Engineer
+
+EXPERIENCE
+Frontend Engineer, Lumen Health (2022-02 to 2026-03)
+- Built patient-facing scheduling flows in React and TypeScript for 300,000 monthly users
+- Migrated 18 pages to Next.js with server rendering and cut first load by 42%
+- Added accessible components with keyboard navigation and screen-reader labels
+
+UI Developer, Kite Studio (2020-01 to 2022-01)
+- Implemented design-system components in Tailwind CSS
+- Wrote Playwright tests for critical booking paths
+
+SKILLS
+JavaScript, TypeScript, React, Next.js, Tailwind CSS, Playwright, Accessibility
+
+EDUCATION
+B.A. Interaction Design, Coastline College, 2019

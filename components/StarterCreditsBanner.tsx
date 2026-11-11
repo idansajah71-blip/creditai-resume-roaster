@@ -12,15 +12,25 @@ type StarterPayload = { active: boolean; credits: number };
 
 export default function StarterCreditsBanner() {
   const [status, setStatus] = useState<StarterPayload | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  // Lazy initializer so a stored dismissal is honoured from the first render.
+  // Safe on the server: while status is null the banner renders nothing, so
+  // SSR output and first client paint stay identical even if storage differs.
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return window.localStorage.getItem(DISMISS_KEY) === "1";
+    } catch {
+      // Storage unavailable (private mode): show the banner as usual.
+      return false;
+    }
+  });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/account/starter");
-        const json = await res.json();
-        if (!cancelled && json.success && json.data?.active) {
+        const json = await res.json().catch(() => null);
+        if (!cancelled && json?.success && json.data?.active) {
           setStatus({ active: true, credits: Number(json.data.credits) });
         }
       } catch {

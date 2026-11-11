@@ -62,9 +62,10 @@ export default function PrivacyPage() {
                 as files.
               </li>
               <li className={li}>
-                Your resume and job description text are sent to the OpenAI API for analysis. OpenAI
-                does not train on data sent through the API. Analysis outputs are stored in our
-                database as described above.
+                Your resume and job description text are sent to the configured AI provider (OpenAI
+                Chat Completions by default) for analysis. OpenAI&rsquo;s API policy states it does not
+                train on data sent through the API; if you configure a different provider, check its
+                policy. Analysis outputs are stored in our database as described above.
               </li>
               <li className={li}>
                 Payments use <strong>PayPal Sandbox</strong> (test mode). No real money moves, and we

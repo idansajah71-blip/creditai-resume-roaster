@@ -36,6 +36,8 @@ function typeLabel(t: Tx): { label: string; tone: "green" | "amber" | "ink" } {
       return { label: "Reserved", tone: "amber" };
     case "consumption":
       return { label: "Used", tone: "ink" };
+    case "guarantee_refund":
+      return { label: "Guarantee refund", tone: "green" };
     case "refund":
     case "purchase_refund":
       return { label: "Refund", tone: "green" };
@@ -83,10 +85,13 @@ const refundStampTone: Record<string, "green" | "red" | "amber"> = {
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
+  // Bounded ledger view: the newest 200 entries (desktop + mobile render the
+  // same slice). The ledger itself stays complete in the database.
   const { data } = await supabase
     .from("credit_transactions")
     .select("id, type, amount, balance_after, reserved_after, reference_type, created_at")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   const { data: refundsRaw } = await supabase
     .from("refund_requests")

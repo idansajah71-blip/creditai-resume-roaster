@@ -1,0 +1,52 @@
+{
+  "pairs": [
+    {
+      "id": "good-backend",
+      "category": "good",
+      "resume": "good-backend/resume.txt",
+      "job": "good-backend/job.txt"
+    },
+    {
+      "id": "good-data-analyst",
+      "category": "good",
+      "resume": "good-data-analyst/resume.txt",
+      "job": "good-data-analyst/job.txt"
+    },
+    {
+      "id": "good-frontend",
+      "category": "good",
+      "resume": "good-frontend/resume.txt",
+      "job": "good-frontend/job.txt"
+    },
+    {
+      "id": "weak-marketing-to-data",
+      "category": "weak",
+      "resume": "weak-marketing-to-data/resume.txt",
+      "job": "weak-marketing-to-data/job.txt"
+    },
+    {
+      "id": "weak-junior-to-senior",
+      "category": "weak",
+      "resume": "weak-junior-to-senior/resume.txt",
+      "job": "weak-junior-to-senior/job.txt"
+    },
+    {
+      "id": "keyword-stuffing",
+      "category": "keyword-stuffing",
+      "resume": "keyword-stuffing/resume.txt",
+      "job": "keyword-stuffing/job.txt"
+    },
+    {
+      "id": "very-short",
+      "category": "very-short",
+      "resume": "very-short/resume.txt",
+      "job": "very-short/job.txt"
+    },
+    {
+      "id": "indonesian-english-jd",
+      "category": "indonesian-english-jd",
+      "resume": "indonesian-english-jd/resume.txt",
+      "job": "indonesian-english-jd/job.txt"
+    }
+  ]
+}

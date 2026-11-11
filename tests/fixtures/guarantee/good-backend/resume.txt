@@ -1,0 +1,18 @@
+Jordan Lee
+Backend Engineer
+
+EXPERIENCE
+Backend Engineer, Harbor Logistics (2021-03 to 2026-02)
+- Built order-routing APIs in Node.js and PostgreSQL serving 2,000 requests per second
+- Cut p99 checkout latency from 800ms to 220ms
+- Ran a Kubernetes migration for 12 services with zero downtime
+
+Software Engineer, Pine Labs (2019-06 to 2021-02)
+- Added Redis caching for catalog reads, reducing database load by 35%
+- Wrote integration tests for the payment service
+
+SKILLS
+Node.js, TypeScript, PostgreSQL, Redis, Docker, Kubernetes, AWS, GitHub Actions
+
+EDUCATION
+B.Sc. Computer Science, Westfield University, 2019

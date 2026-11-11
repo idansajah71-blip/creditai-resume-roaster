@@ -1,0 +1,11 @@
+Senior Backend Engineer - Platform
+
+Responsibilities
+- Design distributed services for millions of requests per day
+- Lead architecture reviews and mentor engineers
+- Own reliability, observability, and incident response
+
+Requirements
+Skills: Go, Kubernetes, PostgreSQL, Kafka, distributed systems, Terraform
+Experience: 5+ years backend engineering, 2+ years leading projects
+Must have: production on-call, large-scale system design

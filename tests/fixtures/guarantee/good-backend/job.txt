@@ -1,0 +1,12 @@
+Backend Engineer - Logistics Platform
+
+Responsibilities
+- Build and operate APIs for order routing and tracking
+- Improve latency and reliability of high-traffic services
+- Own production services and participate in on-call
+
+Requirements
+Skills: Node.js, TypeScript, PostgreSQL, Redis, Docker, Kubernetes, AWS
+Experience: 3+ years backend engineering, 1+ year with distributed systems
+Must have: production ownership, CI/CD with GitHub Actions
+Nice to have: logistics domain, observability tooling

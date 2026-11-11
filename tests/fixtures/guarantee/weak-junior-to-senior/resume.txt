@@ -1,0 +1,17 @@
+Alex Kim
+Junior Web Developer
+
+EXPERIENCE
+Junior Web Developer, Bluebird Digital (2025-01 to 2026-02)
+- Built 3 marketing landing pages with HTML, CSS, and JavaScript
+- Fixed layout bugs reported by clients
+- Updated content in a WordPress site
+
+Projects
+- Personal portfolio built with React
+
+SKILLS
+HTML, CSS, JavaScript, React, WordPress, Git
+
+EDUCATION
+Web Development Certificate, City College, 2024

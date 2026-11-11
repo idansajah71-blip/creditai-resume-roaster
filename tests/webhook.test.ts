@@ -86,4 +86,53 @@ describe("webhook route", () => {
     const res = await POST(req);
     expect(res.status).toBe(500);
   });
+
+  it("rejects an oversized payload before verification", async () => {
+    makeService({ existing: null, order: null });
+    const { POST } = await import("@/app/api/paypal/webhook/route");
+    const big = "x".repeat(256 * 1024 + 1);
+    const req = new Request("http://localhost/api/paypal/webhook", {
+      method: "POST",
+      body: JSON.stringify({ id: "evt3", event_type: "PAYMENT.CAPTURE.COMPLETED", note: big }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(verifyWebhookSignature).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed json", async () => {
+    makeService({ existing: null, order: null });
+    const { POST } = await import("@/app/api/paypal/webhook/route");
+    const req = new Request("http://localhost/api/paypal/webhook", {
+      method: "POST",
+      body: "{not json",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an unverified signature without touching the ledger", async () => {
+    makeService({ existing: null, order: null });
+    verifyWebhookSignature.mockResolvedValue(false);
+    const { POST } = await import("@/app/api/paypal/webhook/route");
+    const req = new Request("http://localhost/api/paypal/webhook", {
+      method: "POST",
+      body: JSON.stringify({ id: "evt4", event_type: "PAYMENT.CAPTURE.COMPLETED", resource: {} }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(grantCredits).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges unknown event types without ledger changes", async () => {
+    makeService({ existing: null, order: null });
+    const { POST } = await import("@/app/api/paypal/webhook/route");
+    const req = new Request("http://localhost/api/paypal/webhook", {
+      method: "POST",
+      body: JSON.stringify({ id: "evt5", event_type: "CHECKOUT.ORDER.APPROVED", resource: {} }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(grantCredits).not.toHaveBeenCalled();
+  });
 });

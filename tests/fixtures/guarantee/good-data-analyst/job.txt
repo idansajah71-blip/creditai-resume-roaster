@@ -1,0 +1,11 @@
+Data Analyst - Growth
+
+Responsibilities
+- Build dashboards and self-serve metrics for growth teams
+- Design and read out A/B tests on acquisition and checkout
+- Partner with product and marketing on funnel analysis
+
+Requirements
+Skills: SQL, Python, Tableau, A/B testing, Google Analytics
+Experience: 2+ years in analytics, e-commerce or growth preferred
+Nice to have: dbt, BigQuery, experimentation frameworks

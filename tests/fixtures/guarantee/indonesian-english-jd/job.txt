@@ -1,0 +1,12 @@
+Backend Engineer - Payments
+
+Responsibilities
+- Build and operate payment APIs for high-volume transactions
+- Improve latency, reliability, and observability
+- Own production services and participate in on-call
+
+Requirements
+Skills: Go, PostgreSQL, Redis, Docker, Kubernetes, REST APIs
+Experience: 3+ years backend engineering, payment or fintech experience preferred
+Must have: production ownership, CI/CD
+Nice to have: observability, Kafka

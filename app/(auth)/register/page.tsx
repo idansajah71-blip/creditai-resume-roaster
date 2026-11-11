@@ -19,13 +19,14 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { error, data } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { display_name: displayName } },
@@ -33,6 +34,14 @@ export default function RegisterPage() {
     setLoading(false);
     if (error) {
       setError(error.message);
+      return;
+    }
+    // When the project requires email confirmation, signup succeeds but no
+    // session is created; sending the user to /dashboard would bounce them
+    // back to /login. Tell them what to do instead.
+    if (!data?.session) {
+      setError(null);
+      setConfirmEmail(true);
       return;
     }
     router.push("/dashboard");
@@ -81,6 +90,15 @@ export default function RegisterPage() {
             {error && (
               <p className="text-sm font-medium text-red-pen" role="alert">
                 {error}
+              </p>
+            )}
+            {confirmEmail && (
+              <p
+                className="rounded-[10px] border border-green/40 bg-green-soft px-3 py-2 text-sm leading-5 text-ink-2"
+                role="status"
+              >
+                Account created. Check <span className="font-mono">{email}</span> for the confirmation link, then log
+                in.
               </p>
             )}
             <Button type="submit" loading={loading} className="w-full">

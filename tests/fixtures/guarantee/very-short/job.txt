@@ -1,0 +1,10 @@
+Senior Data Engineer
+
+Responsibilities
+- Build batch and streaming pipelines for analytics
+- Own data quality and lineage
+- Partner with analysts on warehouse models
+
+Requirements
+Skills: Python, SQL, Spark, Airflow, dbt, Snowflake, data modeling
+Experience: 5+ years data engineering

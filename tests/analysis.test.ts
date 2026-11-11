@@ -37,7 +37,15 @@ vi.mock("@/lib/credits", () => ({
 
 const analyzeResume = vi.fn();
 const scoreResume = vi.fn();
-vi.mock("@/lib/openai", () => ({ analyzeResume, scoreResume }));
+const USAGE = { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 };
+const SCORE_USAGE = { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 };
+const ok = (content: string) => ({ content, usage: USAGE });
+const score = (value: number) => ({ score: value, usage: SCORE_USAGE });
+vi.mock("@/lib/openai", () => ({
+  analyzeResumeDetailed: analyzeResume,
+  scoreResumeDetailed: scoreResume,
+  currentModel: () => "gpt-4o-mini",
+}));
 
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimitDb: async () => true }));
 
@@ -98,7 +106,7 @@ describe("analyze route", () => {
 
   it("refunds on malformed output", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
-    analyzeResume.mockResolvedValue("not json");
+    analyzeResume.mockResolvedValue(ok("not json"));
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
       method: "POST",
@@ -112,8 +120,8 @@ describe("analyze route", () => {
 
   it("finalizes (consumes) on success", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
-    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
-    scoreResume.mockResolvedValue(88);
+    analyzeResume.mockResolvedValue(ok(JSON.stringify(validResult)));
+    scoreResume.mockResolvedValue(score(88));
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
       method: "POST",
@@ -131,7 +139,7 @@ describe("analyze route", () => {
 
   it("omits the after-score delta silently when scoring fails", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
-    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    analyzeResume.mockResolvedValue(ok(JSON.stringify(validResult)));
     scoreResume.mockRejectedValue(new Error("openai_http_error"));
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
@@ -158,9 +166,9 @@ describe("analyze route", () => {
       rewrittenResume: "Improved checkout flows using solid engineering habits.",
     };
     analyzeResume
-      .mockResolvedValueOnce(JSON.stringify(fabricated))
-      .mockResolvedValueOnce(JSON.stringify(clean));
-    scoreResume.mockResolvedValue(75);
+      .mockResolvedValueOnce(ok(JSON.stringify(fabricated)))
+      .mockResolvedValueOnce(ok(JSON.stringify(clean)));
+    scoreResume.mockResolvedValue(score(75));
 
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
@@ -189,7 +197,7 @@ describe("analyze route", () => {
     reserveCredit
       .mockResolvedValueOnce({ reservationId: "res1", balance: 0, reserved: 1 })
       .mockRejectedValueOnce(new Error("insufficient_credits"));
-    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
+    analyzeResume.mockResolvedValue(ok(JSON.stringify(validResult)));
     const { POST } = await import("@/app/api/ai/analyze/route");
 
     const req1 = new Request("http://localhost/api/ai/analyze", {
@@ -210,8 +218,8 @@ describe("analyze route", () => {
 
   it("redacts stored input by default on success (privacy)", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
-    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
-    scoreResume.mockResolvedValue(90);
+    analyzeResume.mockResolvedValue(ok(JSON.stringify(validResult)));
+    scoreResume.mockResolvedValue(score(90));
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
       method: "POST",
@@ -233,8 +241,8 @@ describe("analyze route", () => {
 
   it("keeps raw input when retainInput:true", async () => {
     reserveCredit.mockResolvedValue({ reservationId: "res1", balance: 0, reserved: 1 });
-    analyzeResume.mockResolvedValue(JSON.stringify(validResult));
-    scoreResume.mockResolvedValue(90);
+    analyzeResume.mockResolvedValue(ok(JSON.stringify(validResult)));
+    scoreResume.mockResolvedValue(score(90));
     const { POST } = await import("@/app/api/ai/analyze/route");
     const req = new Request("http://localhost/api/ai/analyze", {
       method: "POST",

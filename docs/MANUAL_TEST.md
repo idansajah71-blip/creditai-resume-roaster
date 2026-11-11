@@ -5,7 +5,7 @@ Every check lists action steps and the exact expected result. Do them in order; 
 ## Preconditions
 
 1. `.env.local` filled (Supabase URL/anon/service keys, `OPENAI_API_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_ENV=sandbox`, `DEMO_IP_SALT`).
-2. Migrations `0001-0007` run in the Supabase SQL editor, in order.
+2. Migrations `0001-0012` run in the Supabase SQL editor, in order.
 3. Supabase: email confirmation disabled (Auth settings) so demo accounts can sign in.
 4. PayPal Sandbox webhook subscribed to `PAYMENT.CAPTURE.COMPLETED` and `PAYMENT.CAPTURE.REFUNDED`, pointing at `/api/paypal/webhook` (for localhost, a tunnel such as ngrok is required to receive webhooks).
 5. Server running (`npm run dev`). Funds: PayPal Sandbox personal buyer account exists.
@@ -65,6 +65,47 @@ Every check lists action steps and the exact expected result. Do them in order; 
 ## 13. Mobile layout at 375px
 - Steps: DevTools device toolbar, 375x812. Visit `/`, `/judges`, `/login`, `/analyze`, `/credits`, `/transactions`, `/privacy`.
 - Expected: no horizontal scrolling, text remains readable (no legibility loss at 100% zoom), buttons satisfy a 40px tap height (the `.btn` class min-height), tiles/cards stack in one column; the score card, fabrication chips, and CopyField rows wrap correctly; the PayPal panel renders and is tappable.
+
+## 14. Guarantee met (good pair)
+- Steps: on `/analyze`, click "Use sample data", run Analyze.
+- Expected: the results column shows a green GUARANTEE MET stamp above the verdict reasons; clicking "How this is measured" jumps to the explainer card listing the bar (no invented details, >= 10 coverage gain or >= 85 without a drop, <= 2 added keywords). `/transactions` shows nothing new beyond the ledger debit; balance NET change is -1.
+
+## 15. Guarantee refund (bad pair, automatic)
+- Steps: on `/analyze`, enter a very short resume (e.g. `Name only, no details.`) and an unrelated job description (e.g. `Hiring a submarine welder, 10 years of pressurized hull experience required.`), run Analyze.
+- Expected: after the automatic free retry, a red CREDIT REFUNDED stamp appears with plain-language reasons ("Keyword coverage rose by 0.0 points; the guarantee needs at least 10." and/or the fabrication line) and the note "Your credit was returned. You can keep this result."; the balance stamp in the navbar returns to the pre-run value (router.refresh() after the response); `/transactions` shows a green `Guarantee refund` row (+1) whose reference id is the job id; the shown result stays readable.
+
+## 16. Guarantee waived (daily cap)
+- Steps: in the SQL editor run `select count(*) from public.credit_transactions where user_id = '<your uuid>' and type = 'guarantee_refund';` to count already-refunded misses; set `GUARANTEE_DAILY_REFUND_LIMIT=<that count>` in `.env.local`, restart the server, and run another deliberately bad analysis.
+- Expected: an amber REFUND LIMIT REACHED stamp with the reasons, +0 credits, `ai_jobs.guarantee_status = 'waived'` for that job, no new guarantee_refund ledger row. Also a "Refund to PayPal instead" button (deep link to the deterministic refund desk on `/credits` with 1 credit and the reason prefilled). Restore the env value afterwards.
+
+## 17. Guarantee refund idempotency (SQL, exact)
+- Steps in the Supabase SQL editor (pick a job that SUCCEEDED, consumed its credit, and has `guarantee_status = 'refunded'` from test 15):
+```sql
+select id, status, guarantee_status, credits_cost
+from public.ai_jobs
+order by created_at desc limit 5;
+```
+- Then call the refund twice with that job id and a dummy reason:
+```sql
+select public.apply_guarantee_refund('<job id>', '{"codes":["low_gain"]}'::jsonb, 3);
+select public.apply_guarantee_refund('<job id>', '{"codes":["low_gain"]}'::jsonb, 3);
+```
+- Expected result: BOTH calls return (`refunded`, 1), the profile balance is unchanged between the two calls, and the ledger contains EXACTLY ONE row for the job:
+```sql
+select count(*) as ledger_rows
+from public.credit_transactions
+where reference_type = 'guarantee' and reference_id = '<job id>';
+-- ledger_rows = 1
+
+select type, amount, idempotency_key, balance_after, reserved_after
+from public.credit_transactions
+where idempotency_key = 'guarantee:' || '<job id>';
+```
+Also verify a second call cannot move money: run the double-call block again; `ledger_rows` stays 1 and the sum of amounts for the job stays one single +1.
+
+## 18. Guarantee mark idempotency (SQL)
+- Steps: pick a job with `guarantee_status = 'met'`; run `select public.mark_guarantee_met('<job id>', 0, 100);` twice more.
+- Expected: both calls return void, `guarantee_status` stays `met`, `coverage_before/coverage_after` stay the originally stored values (the update only transitions from `not_applicable`), and `guarantee_checked_at` does not advance on re-calls.
 
 ## Accessibility spot checks
 - Keyboard only (no mouse): tab through `/judges`, `/analyze`, `/credits`, `/dashboard`, and the dialogs: focus is visible on every interactive element, the refund textarea is reachable, the PayPal panel button is focusable in its iframe, and focus is trapped inside open dialogs (Escape cancels).

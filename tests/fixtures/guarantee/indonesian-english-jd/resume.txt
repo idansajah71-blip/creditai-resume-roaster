@@ -1,0 +1,19 @@
+Dewi Anggraini
+Backend Engineer
+
+PENGALAMAN
+Backend Engineer, Toko Cerdas (2021-04 hingga 2026-01)
+- Mengembangkan API pembayaran dengan Go dan PostgreSQL untuk 80.000 transaksi per hari
+- Menurunkan latensi p99 dari 900ms menjadi 250ms
+- Memigrasikan 10 layanan ke Kubernetes tanpa downtime
+- Menambahkan caching Redis yang mengurangi beban database 30%
+
+Software Engineer, Data Kita (2019-08 hingga 2021-03)
+- Membangun layanan internal dengan Node.js dan Docker
+- Menulis pengujian integrasi untuk alur refund
+
+KEAHLIAN
+Go, PostgreSQL, Redis, Docker, Kubernetes, REST API, Git
+
+PENDIDIKAN
+S1 Teknik Informatika, Universitas Cendana, 2019

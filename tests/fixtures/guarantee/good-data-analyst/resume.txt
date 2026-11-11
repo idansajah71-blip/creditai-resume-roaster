@@ -1,0 +1,17 @@
+Priya Nair
+Data Analyst
+
+EXPERIENCE
+Data Analyst, BrightCart Commerce (2021-01 to 2026-01)
+- Built weekly revenue and funnel dashboards in Tableau for 45 stakeholders
+- Wrote SQL and Python pipelines processing 4 million orders per month
+- Designed A/B tests for checkout changes, lifting conversion by 6.2%
+
+Analytics Intern, Northstar Media (2020-06 to 2020-12)
+- Cleaned campaign data with pandas and documented metric definitions
+
+SKILLS
+SQL, Python, pandas, Tableau, A/B testing, Google Analytics, Excel
+
+EDUCATION
+B.Sc. Statistics, Riverbend University, 2020

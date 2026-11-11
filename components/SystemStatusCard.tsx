@@ -10,6 +10,11 @@ type Checks = {
   webhook_configured: boolean;
 };
 
+type CostMetrics = {
+  avg_cost_usd: number | null;
+  cost_sample_size: number;
+};
+
 const ROWS: { key: keyof Checks; label: string; ok: string; fail: string }[] = [
   { key: "database", label: "Database (Supabase)", ok: "Connected", fail: "Down" },
   { key: "paypal", label: "PayPal Sandbox API", ok: "Connected", fail: "Down" },
@@ -21,16 +26,23 @@ const ROWS: { key: keyof Checks; label: string; ok: string; fail: string }[] = [
    monospaced uppercase like a print proof sheet. */
 export default function SystemStatusCard() {
   const [checks, setChecks] = useState<Checks | null>(null);
+  const [cost, setCost] = useState<CostMetrics | null>(null);
 
   useEffect(() => {
     let alive = true;
     fetch("/api/health")
       .then((r) => r.json())
       .then((j) => {
-        if (alive) setChecks(j.checks ?? null);
+        if (alive) {
+          setChecks(j.checks ?? null);
+          setCost(j.cost ?? null);
+        }
       })
       .catch(() => {
-        if (alive) setChecks(null);
+        if (alive) {
+          setChecks(null);
+          setCost(null);
+        }
       });
     return () => {
       alive = false;
@@ -60,6 +72,23 @@ export default function SystemStatusCard() {
             )}
           </li>
         ))}
+        <li className="flex items-center justify-between gap-3 py-2.5">
+          <span className="max-w-[70%] text-ink-2">
+            Average estimated model cost per analysis (last 50 jobs)
+          </span>
+          <span
+            className="font-mono text-[11px] uppercase leading-4 tracking-[0.08em] text-ink-3"
+            title={
+              cost && cost.cost_sample_size > 0
+                ? `Based on ${cost.cost_sample_size} recent succeeded jobs`
+                : undefined
+            }
+          >
+            {!cost || cost.avg_cost_usd == null
+              ? "No data yet"
+              : `$${cost.avg_cost_usd.toFixed(6)}`}
+          </span>
+        </li>
       </ul>
     </Sheet>
   );

@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/redirect";
 import PublicShell from "@/components/PublicShell";
 import AuthSplit from "@/components/AuthSplit";
 import { Sheet } from "@/components/ui/Sheet";
@@ -15,7 +16,9 @@ import { RedUnderline, Rule } from "@/components/ui/annotations";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/dashboard";
+  // Same allowlist as the auth callback: the login page's `next` is
+  // user-controlled and must never leave the origin.
+  const next = safeNextPath(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

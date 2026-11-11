@@ -7,7 +7,7 @@
 4. Deploy.
 
 ## Database
-- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql` in Supabase SQL editor (in order).
+- Run `supabase/migrations/0001_init.sql`, `0002_paypal_grant.sql`, `0003_ai_reservations.sql`, `0004_stale_reservations.sql`, `0005_demo_sessions.sql`, `0006_refunds.sql`, `0007_purge_inputs.sql`, `0008_demo_hardening.sql`, `0009_signup_grant.sql`, `0010_guarantee_refund.sql`, `0011_agent_policy.sql`, `0012_match_score.sql` in Supabase SQL editor (in order).
 
 ## Privacy retention
 - Migration `0007_purge_inputs.sql` makes `ai_jobs.input` nullable and adds `purge_old_job_inputs(p_older_than interval default interval '30 days')`
@@ -31,6 +31,7 @@
 ## Cost protection (OpenAI)
 - In the OpenAI dashboard, set a hard monthly spend limit on your project. This caps real cost even if env limits are misconfigured.
 - Tune `AI_DAILY_LIMIT_PER_USER`, `AI_GLOBAL_DAILY_LIMIT`, `PAYPAL_MAX_ORDERS_PER_DAY`, `DEMO_SESSIONS_DAILY_LIMIT` in env.
+- Outcome guarantee bar (all optional, defaults in code and `.env.example`): `GUARANTEE_MIN_GAIN`, `GUARANTEE_ALREADY_STRONG`, `GUARANTEE_MAX_ADDED_TERMS`, `GUARANTEE_DAILY_REFUND_LIMIT`. The automatic refund refunds the reserved credit inside Postgres (`apply_guarantee_refund`), no PayPal call involved.
 
 ## Ephemeral demo sessions
 - `POST /api/demo/session` creates a fresh demo user (email `demo-<random>@creditai.local`), grants 5 credits, and is limited per IP (3/hour) and globally (`DEMO_SESSIONS_DAILY_LIMIT`/day).
